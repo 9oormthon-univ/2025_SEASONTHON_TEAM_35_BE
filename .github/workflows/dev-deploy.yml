@@ -75,5 +75,5 @@ jobs:
             sudo docker stop ${{ secrets.DOCKER_IMAGE }}
             sudo docker rm ${{ secrets.DOCKER_IMAGE }}
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE }}
-            sudo docker run -d -p 8080:8080 --name ${{ secrets.DOCKER_IMAGE }} ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE }}
+            sudo docker run -d -p 80:8080 --name ${{ secrets.DOCKER_IMAGE }} ${{ secrets.DOCKER_USERNAME }}/${{ secrets.DOCKER_IMAGE }}
             sudo docker image prune -f

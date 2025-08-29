@@ -11,7 +11,7 @@ class GrowplanApplicationTests {
 	}
 
 	@Test
-	void cicd_test용() {
+	void cicd_test용_2() {
 
 	}
 }

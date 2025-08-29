@@ -10,4 +10,8 @@ class GrowplanApplicationTests {
 	void contextLoads() {
 	}
 
+	@Test
+	void cicd_test용() {
+
+	}
 }

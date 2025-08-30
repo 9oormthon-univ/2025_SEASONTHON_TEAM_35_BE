@@ -86,7 +86,7 @@ sourceSets {
 clean {
 	delete file(generated)
 }
-
-tasks.named('jar') {
-	enabled = false
-}
+//
+//tasks.named('jar') {
+//	enabled = false
+//}

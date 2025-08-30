@@ -30,7 +30,11 @@ public class AssetItem extends BaseEntity { // 자산 종류
 
     private Double percentage;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "assetPortfolio_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "asset_portfolio_id", nullable = false)
     private AssetPortfolio assetPortfolio;
+
+    public void setAssetPortfolio(AssetPortfolio assetPortfolio) {
+        this.assetPortfolio = assetPortfolio;
+    }
 }

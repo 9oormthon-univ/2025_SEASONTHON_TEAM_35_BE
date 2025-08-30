@@ -45,7 +45,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/api/v0/auth/kakao",
             "/oauth2/**",
-            "api/v0/member/success",
+            "/api/v0/member/success",
     };
 
     @Bean

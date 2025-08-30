@@ -35,7 +35,6 @@ public class JwtFilter extends OncePerRequestFilter {
             // 1. HttpServletRequest에 있는 header에서 Authorization header를 가져와 토큰을 가져온다.
             String accessToken = jwtUtil.getAccessTokenFromHeader(request.getHeader("Authorization"));
 
-
             if (accessToken == null || accessToken.isEmpty()) {
                 filterChain.doFilter(request, response);
                 return;
@@ -52,7 +51,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
             // 4. 해당 객체를 SecurityContextHolder에 넣어준다
             UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(details,
-                    details.getPassword(), details.getAuthorities());
+                    null, // 비밀번호는 필요 없으므로 null 처리
+                    details.getAuthorities());
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             filterChain.doFilter(request, response);

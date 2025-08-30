@@ -1,4 +1,4 @@
-package com.growplan.domain.goal.entity;
+package com.growplan.domain.recommendation.entity;
 
 import com.growplan.domain.member.entity.Member;
 import com.growplan.global.common.BaseEntity;
@@ -15,11 +15,11 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class Goal extends BaseEntity {
+public class InvestmentDesign extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long goalId;
+    private Long investmentDesignId;
 
     @Enumerated(EnumType.STRING)
     private SavingRange savingRange; // 월 저축 가능 금액
@@ -41,10 +41,10 @@ public class Goal extends BaseEntity {
 
     Boolean emergencyFund; // 비상금 마련 여부
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
 
-    @OneToOne(mappedBy = "goal", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private GoalAnalysis goalAnalysis;
+    @OneToOne(mappedBy = "design", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private Recommendation recommendation;
 }

@@ -21,7 +21,7 @@ public class AssetController {
     private final AssetQueryService assetQueryService;
 
     @PostMapping("/register")
-    @Operation(summary = "자산 등록 API", description = "회원의 자산을 등록합니다. 자세한 enum 설명은 노션에 정리하겠습니다.")
+    @Operation(summary = "자산 등록 API", description = "회원의 자산을 등록합니다")
     public ApiResponse<Void> registerAsset(@CurrentMember Member member,
                                            @RequestBody @Valid AssetRequestDTO.RegisterAssetRequestDTO request) {
         assetCommandService.registerAsset(member, request);

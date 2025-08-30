@@ -8,6 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.math.BigDecimal;
+
 @Entity
 @Getter
 @SuperBuilder
@@ -19,7 +21,8 @@ public class GoalAnalysis extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long goalAnalysisId;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goal_id", nullable = false)
-    private Goal goal;
+    private BigDecimal targetAmount;
+
+    @Lob
+    private String analysisText; // 목표 분석
 }

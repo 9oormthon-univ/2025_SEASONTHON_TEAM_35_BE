@@ -29,4 +29,8 @@ public class Recommendation extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
     private Member member;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "design_id", nullable = false)
+    private InvestmentDesign design;
 }

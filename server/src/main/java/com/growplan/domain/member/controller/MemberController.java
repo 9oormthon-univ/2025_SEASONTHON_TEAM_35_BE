@@ -1,5 +1,7 @@
 package com.growplan.domain.member.controller;
 
+import com.growplan.domain.member.converter.MemberConverter;
+import com.growplan.domain.member.dto.MemberResponseDTO;
 import com.growplan.domain.member.entity.Member;
 import com.growplan.domain.member.service.MemberService;
 import com.growplan.global.annotation.CurrentMember;
@@ -37,11 +39,8 @@ public class MemberController {
 
     @GetMapping("/success")
     @Operation(summary = "백엔드 테스트용입니다", description = "로그인 테스트용입니다 연결 X")
-    public Map<String, Object> success(@RequestParam("access_token") String accessToken) {
-        return Map.of(
-                "message", "OAuth2 login success",
-                "access_token", accessToken
-        );
+    public ApiResponse<MemberResponseDTO.LoginSuccessDTO> success(@RequestParam("access_token") String accessToken) {
+        return ApiResponse.onSuccess(MemberConverter.toLoginSuccessDTO(accessToken));
     }
 
     @GetMapping("/me")

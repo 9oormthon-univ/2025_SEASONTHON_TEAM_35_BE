@@ -16,10 +16,10 @@ public class MemberConverter {
                 .build();
     }
 
-//    public static MemberResponseDTO.LoginSuccessDTO toLoginSuccessDTO(Member member, String accessToken) {
-//        return MemberResponseDTO.LoginSuccessDTO.builder()
-//                .accessToken(accessToken)
-//                .build();
-//    }
+    public static MemberResponseDTO.LoginSuccessDTO toLoginSuccessDTO(String accessToken) {
+        return MemberResponseDTO.LoginSuccessDTO.builder()
+                .accessToken(accessToken)
+                .build();
+    }
 
 }

@@ -10,6 +10,7 @@ import com.growplan.domain.member.entity.Member;
 import com.growplan.domain.member.repository.MemberRepository;
 import com.growplan.global.common.enums.AssetType;
 import com.growplan.global.error.code.status.ErrorStatus;
+import com.growplan.global.error.exception.handler.AssetException;
 import com.growplan.global.error.exception.handler.MemberException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,10 +31,6 @@ import static com.growplan.domain.asset.converter.AssetConverter.toRegisterAsset
 public class AssetCommandServiceImpl implements AssetCommandService {
 
     private final AssetPortfolioRepository assetPortfolioRepository;
-    private static final Set<AssetType> INVESTMENT_TYPES =
-            EnumSet.of(AssetType.STOCK, AssetType.BITCOIN, AssetType.BOND, AssetType.ETF); // 투자 자산
-    private static final int PCT_SCALE = 1;
-    private static final RoundingMode RM = RoundingMode.HALF_UP; // 반올림
 
     @Override
     public void registerAsset(Member member, AssetRequestDTO.RegisterAssetRequestDTO request) {

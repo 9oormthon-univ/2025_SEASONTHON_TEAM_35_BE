@@ -7,6 +7,8 @@ import com.growplan.domain.asset.entity.AssetPortfolio;
 import com.growplan.domain.asset.repository.AssetPortfolioRepository;
 import com.growplan.domain.member.entity.Member;
 import com.growplan.global.common.enums.AssetType;
+import com.growplan.global.error.code.status.ErrorStatus;
+import com.growplan.global.error.exception.handler.AssetException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,10 +41,14 @@ public class AssetQueryServiceImpl implements AssetQueryService {
         BigDecimal totalAmount = sumAll(items);
         // 현금
         BigDecimal cash = sumByType(items, AssetType.CASH);
-        // 투자(정의된 4종)
+        // 투자
         BigDecimal totalInvestedAmount = sumByInvestment(items, INVESTMENT_TYPES);
         // 기타 = 총액 - (현금+투자), 음수 방지
         BigDecimal other = safe(totalAmount.subtract(cash).subtract(totalInvestedAmount));
+
+        if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
+            throw new AssetException(ErrorStatus.ASSET_NOT_FOUND);
+        }
 
         portfolio.updateTotals(totalAmount, totalInvestedAmount);
 

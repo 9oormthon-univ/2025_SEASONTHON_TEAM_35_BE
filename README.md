@@ -1,5 +1,4 @@
 # GrowPlan-BE
-<br/>
 ---
 ## 커밋 컨벤션
 |    Tag     | Description |

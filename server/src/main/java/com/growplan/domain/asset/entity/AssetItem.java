@@ -28,7 +28,8 @@ public class AssetItem extends BaseEntity { // 자산 종류
     @Column(precision = 19, scale = 4)
     private BigDecimal amount;
 
-    private Double percentage;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal percentage;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "asset_portfolio_id", nullable = false)
@@ -36,5 +37,13 @@ public class AssetItem extends BaseEntity { // 자산 종류
 
     public void setAssetPortfolio(AssetPortfolio assetPortfolio) {
         this.assetPortfolio = assetPortfolio;
+    }
+
+    public void setAmount(BigDecimal amount) {
+        this.amount = amount;
+    }
+
+    public void setPercentage(BigDecimal percentage) {
+        this.percentage = percentage;
     }
 }

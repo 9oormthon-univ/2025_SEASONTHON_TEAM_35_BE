@@ -21,6 +21,7 @@ public enum ErrorStatus implements BaseErrorCode {
     MEMBER_EXIST(HttpStatus.CONFLICT, "MEMBER409", "멤버가 이미 존재합니다."),
 
     // Asset
+    ASSET_ITEM_INVALID_REQUEST(HttpStatus.NOT_FOUND, "ASSET402", "기타로 수정할 수 없는 타입입니다."),
     ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "ASSET404", "아직 자산을 입력하지 않았습니다."),
 
     // Jwt

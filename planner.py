@@ -116,7 +116,7 @@ class PortfolioPlanner:
 
 # 사용 예시
 if __name__ == "__main__":
-    # 사용자 1의 정보로 planner 객체 생성
+    # 사용자의 정보로 planner 객체 생성
     user_planner = PortfolioPlanner(
         monthly_income=450, # 450만원
         risk_tolerance="중립형",

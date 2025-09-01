@@ -21,9 +21,24 @@ public class AssetController {
     private final AssetQueryService assetQueryService;
 
     @PostMapping("/register")
-    @Operation(summary = "자산 등록 API", description = "회원의 자산을 등록합니다")
+    @Operation(summary = "자산 등록 API",
+            description = """
+                    회원의 자산을 등록합니다.
+                    <br><br><b>요청 본문(Request Body) 전체 양식 예시:</b>
+                    <pre><code>{
+                      "assetList": [
+                        { "assetType": "CASH", "amount": 10000000 },
+                        { "assetType": "STOCK", "amount": 5000000 },
+                        { "assetType": "BOND", "amount": 2000000 },
+                        { "assetType": "ETF", "amount": 1500000 },
+                        { "assetType": "BITCOIN", "amount": 1000000 },
+                        { "assetType": "OTHER", "amount": 500000 }
+                      ]
+                    }</code></pre>"""
+    )
     public ApiResponse<Void> registerAsset(@CurrentMember Member member,
-                                           @RequestBody @Valid AssetRequestDTO.RegisterAssetRequestDTO request) {
+                                           @RequestBody @Valid AssetRequestDTO.RegisterAssetRequestDTO request)
+    {
         assetCommandService.registerAsset(member, request);
         return ApiResponse.onSuccess(null);
     }
@@ -33,5 +48,29 @@ public class AssetController {
     public ApiResponse<AssetResponseDTO.RegisterAssetResponseDTO> getAssetSummary(@CurrentMember Member member) {
         AssetResponseDTO.RegisterAssetResponseDTO response = assetQueryService.getAssetSummary(member);
         return ApiResponse.onSuccess(response);
+    }
+
+    @PostMapping("/modify-cash")
+    @Operation(summary = "현금 자산 수정 API", description = "회원의 현금 자산을 수정합니다.")
+    public ApiResponse<Void> updateCash(@CurrentMember Member member,
+                                        @RequestBody @Valid AssetRequestDTO.UpdateCashRequest request) {
+        assetQueryService.updateCash(member, request);
+        return ApiResponse.onSuccess(null);
+    }
+
+    @PostMapping("/modify-investment")
+    @Operation(summary = "투자 자산 수정 API", description = "회원의 투자 자산을 수정합니다.")
+    public ApiResponse<Void> updateInvestment(@CurrentMember Member member,
+                                        @RequestBody @Valid AssetRequestDTO.UpdateInvestmentsRequest request) {
+        assetQueryService.updateInvestment(member, request);
+        return ApiResponse.onSuccess(null);
+    }
+
+    @PostMapping("/modify-other")
+    @Operation(summary = "기타 자산 수정 API", description = "회원의 기타 자산을 수정합니다.")
+    public ApiResponse<Void> updateOther(@CurrentMember Member member,
+                                        @RequestBody @Valid AssetRequestDTO.UpdateOthersRequest request) {
+        assetQueryService.updateOthers(member, request);
+        return ApiResponse.onSuccess(null);
     }
 }

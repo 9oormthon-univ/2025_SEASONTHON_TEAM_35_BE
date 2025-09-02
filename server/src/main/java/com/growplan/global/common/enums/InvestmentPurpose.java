@@ -13,5 +13,4 @@ public enum InvestmentPurpose { // 투자 목적
     TRAVEL,            // 여행
     MARRIAGE,          // 결혼
     SELF_DEVELOPMENT,  // 자기계발
-    OTHER              // 기타
 }

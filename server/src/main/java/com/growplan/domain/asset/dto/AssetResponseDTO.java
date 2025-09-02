@@ -23,6 +23,13 @@ public class AssetResponseDTO {
 
         BigDecimal cashAmount;
         BigDecimal cashRatioPercent;        // 총자산 대비 %
+
+        BigDecimal depositAmount;
+        BigDecimal depositRatioPercent;    // 총자산 대비 %
+
+        BigDecimal savingsAmount;
+        BigDecimal savingsRatioPercent;    // 총자산 대비 %
+
         BigDecimal investedAmount;
         BigDecimal investedRatioPercent;    // 총자산 대비 %
 

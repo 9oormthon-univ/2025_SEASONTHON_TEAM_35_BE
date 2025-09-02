@@ -23,14 +23,30 @@ public class AssetRequestDTO {
     public static class ItemRequest {
 
         private AssetType assetType;
-        @PositiveOrZero(message = "금액은 0 이상이어야 합니다.")
         @DecimalMax(value = "500000000", inclusive = false, message = "금액은 5억 미만이어야 합니다.")
         private BigDecimal amount;
     }
 
-    @Getter @Setter
+    @Getter
+    @Setter
     public static class UpdateCashRequest {
-        @PositiveOrZero
+
+        @DecimalMax(value = "500000000", inclusive = false, message = "금액은 5억 미만이어야 합니다.")
+        private BigDecimal amount;
+    }
+
+    @Getter
+    @Setter
+    public static class UpdateDepositRequest {
+
+        @DecimalMax(value = "500000000", inclusive = false, message = "금액은 5억 미만이어야 합니다.")
+        private BigDecimal amount;
+    }
+
+    @Getter
+    @Setter
+    public static class UpdateSavingsRequest {
+
         @DecimalMax(value = "500000000", inclusive = false, message = "금액은 5억 미만이어야 합니다.")
         private BigDecimal amount;
     }
@@ -55,6 +71,8 @@ public class AssetRequestDTO {
     @Setter
     public static class UpdateOthersRequest {
 
-        private List<AssetRequestDTO.ItemRequest> items; // AssetType + amount
+        @DecimalMax(value = "500000000", inclusive = false, message = "금액은 5억 미만이어야 합니다.")
+        private BigDecimal amount;
     }
+
 }

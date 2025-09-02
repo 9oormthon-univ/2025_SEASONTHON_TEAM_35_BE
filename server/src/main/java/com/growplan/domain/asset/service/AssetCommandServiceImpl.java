@@ -31,8 +31,6 @@ import static com.growplan.domain.asset.converter.AssetConverter.toRegisterAsset
 public class AssetCommandServiceImpl implements AssetCommandService {
 
     private final AssetPortfolioRepository assetPortfolioRepository;
-    private static final Set<AssetType> INVESTMENT_TYPES =
-            EnumSet.of(AssetType.STOCK, AssetType.BITCOIN, AssetType.BOND, AssetType.ETF); // 투자 자산
 
     @Override
     public void registerAsset(Member member, AssetRequestDTO.RegisterAssetRequestDTO request) {

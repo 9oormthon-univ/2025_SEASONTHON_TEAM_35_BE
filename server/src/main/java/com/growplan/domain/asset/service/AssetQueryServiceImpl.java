@@ -42,6 +42,10 @@ public class AssetQueryServiceImpl implements AssetQueryService {
         BigDecimal totalAmount = sumAll(items);
         // 현금
         BigDecimal cash = sumByType(items, AssetType.CASH);
+        // 예금
+        BigDecimal deposit = sumByType(items, AssetType.DEPOSIT);
+        // 적금
+        BigDecimal savings = sumByType(items, AssetType.SAVINGS);
         // 투자
         BigDecimal totalInvestedAmount = sumByInvestment(items, INVESTMENT_TYPES);
         // 기타 = 총액 - (현금+투자), 음수 방지
@@ -58,7 +62,7 @@ public class AssetQueryServiceImpl implements AssetQueryService {
         BigDecimal bond = sumByType(items, AssetType.BOND);
         BigDecimal etf = sumByType(items, AssetType.ETF);
 
-        return toRegisterAssetResponse(totalAmount, cash, totalInvestedAmount, other, stock, bitcoin, bond, etf);
+        return toRegisterAssetResponse(totalAmount, cash, deposit, savings, totalInvestedAmount, other, stock, bitcoin, bond, etf);
     }
 
     @Override
@@ -67,6 +71,28 @@ public class AssetQueryServiceImpl implements AssetQueryService {
         AssetPortfolio portfolio = getOrCreatePortfolio(member);
 
         upsertItem(portfolio, AssetType.CASH, nz(request.getAmount())); // 현금 수정
+        portfolio.recalculateTotalsAndPercentages(); // 모든 총액 및 비율 재계산
+
+        assetPortfolioRepository.save(portfolio);
+    }
+
+    @Override
+    public void updateDeposit(Member member, AssetRequestDTO.UpdateDepositRequest request) { // 예금 수정
+
+        AssetPortfolio portfolio = getOrCreatePortfolio(member);
+
+        upsertItem(portfolio, AssetType.DEPOSIT, nz(request.getAmount())); // 예금 수정
+        portfolio.recalculateTotalsAndPercentages(); // 모든 총액 및 비율 재계산
+
+        assetPortfolioRepository.save(portfolio);
+    }
+
+    @Override
+    public void updateSavings(Member member, AssetRequestDTO.UpdateSavingsRequest request) { // 적금 수정
+
+        AssetPortfolio portfolio = getOrCreatePortfolio(member);
+
+        upsertItem(portfolio, AssetType.SAVINGS, nz(request.getAmount())); // 적금 수정
         portfolio.recalculateTotalsAndPercentages(); // 모든 총액 및 비율 재계산
 
         assetPortfolioRepository.save(portfolio);
@@ -97,19 +123,10 @@ public class AssetQueryServiceImpl implements AssetQueryService {
     public void updateOthers(Member member, AssetRequestDTO.UpdateOthersRequest request) { // 기타 자산 수정
 
         AssetPortfolio portfolio = getOrCreatePortfolio(member);
-        if (request.getItems() == null) return;
 
-        for (AssetRequestDTO.ItemRequest it : request.getItems()) {
-
-            AssetType t = it.getAssetType();
-            if (t == null) continue;
-            if (t == AssetType.CASH || INVESTMENT_TYPES.contains(t)) {
-                throw new AssetException(ErrorStatus.ASSET_ITEM_INVALID_REQUEST);
-            }
-            upsertItem(portfolio, t, nz(it.getAmount()));
-        }
-
+        upsertItem(portfolio, AssetType.OTHER, nz(request.getAmount())); // 기타 자산 수정
         portfolio.recalculateTotalsAndPercentages(); // 모든 총액 및 비율 재계산
+
         assetPortfolioRepository.save(portfolio);
     }
 

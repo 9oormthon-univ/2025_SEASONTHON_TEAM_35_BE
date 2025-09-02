@@ -29,7 +29,7 @@ public class AssetConverter {
                 .build();
     }
 
-    public static AssetResponseDTO.RegisterAssetResponseDTO toRegisterAssetResponse(
+    public static AssetResponseDTO.RegisterAssetResponseDTO toRegisterAssetResponse (
             BigDecimal total,
             BigDecimal cash,
             BigDecimal invested,
@@ -39,10 +39,10 @@ public class AssetConverter {
             BigDecimal bond,
             BigDecimal etf
     ) {
-        total    = nz(total);
-        cash     = nz(cash);
+        total = nz(total);
+        cash = nz(cash);
         invested = nz(invested);
-        other    = nz(other);
+        other = nz(other);
 
         return AssetResponseDTO.RegisterAssetResponseDTO.builder()
                 .totalAmount(total)
@@ -57,10 +57,10 @@ public class AssetConverter {
                 .otherRatioPercent(percent(other, total))
 
                 // 투자 자산 내 비율(분모: invested)
-                .stockRatioPercent(percent(stock,   invested))
+                .stockRatioPercent(percent(stock, invested))
                 .bitcoinRatioPercent(percent(bitcoin, invested))
-                .bondRatioPercent(percent(bond,     invested))
-                .etfRatioPercent(percent(etf,       invested))
+                .bondRatioPercent(percent(bond, invested))
+                .etfRatioPercent(percent(etf, invested))
                 .build();
     }
 

@@ -73,7 +73,7 @@ public class AssetQueryServiceImpl implements AssetQueryService {
     }
 
     @Override
-    public void updateInvestment(Member member, AssetRequestDTO.UpdateInvestmentsRequest request) { // 투자 수정
+    public AssetResponseDTO.updateInvestmentResponseDTO updateInvestment(Member member, AssetRequestDTO.UpdateInvestmentsRequest request) { // 투자 수정
 
         AssetPortfolio portfolio = getOrCreatePortfolio(member);
 
@@ -84,6 +84,13 @@ public class AssetQueryServiceImpl implements AssetQueryService {
 
         portfolio.recalculateTotalsAndPercentages(); // 모든 총액 및 비율 재계산
         assetPortfolioRepository.save(portfolio);
+
+        return AssetResponseDTO.updateInvestmentResponseDTO.builder()
+                .stockAmount(request.getStockAmount())
+                .bitcoinAmount(request.getBitcoinAmount())
+                .bondAmount(request.getBondAmount())
+                .etfAmount(request.getEtfAmount())
+                .build();
     }
 
     @Override

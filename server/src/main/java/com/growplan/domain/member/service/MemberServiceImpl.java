@@ -1,5 +1,9 @@
 package com.growplan.domain.member.service;
 
+import com.growplan.domain.asset.entity.AssetPortfolio;
+import com.growplan.domain.asset.repository.AssetPortfolioRepository;
+import com.growplan.domain.member.converter.MemberConverter;
+import com.growplan.domain.member.dto.MemberResponseDTO;
 import com.growplan.domain.member.entity.Member;
 import com.growplan.domain.member.repository.MemberRepository;
 import com.growplan.global.token.repository.RefreshTokenRepository;
@@ -11,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -18,6 +24,7 @@ public class MemberServiceImpl implements MemberService {
 
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final AssetPortfolioRepository assetPortfolioRepository;
     private final JwtUtil jwtUtil;
     private final CookieUtil cookieUtil;
 
@@ -37,5 +44,16 @@ public class MemberServiceImpl implements MemberService {
 
         Cookie deletedCookie = cookieUtil.deleteCookie();
         response.addCookie(deletedCookie);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MemberResponseDTO.MyPageDTO getMyPage(Member member) {
+
+        BigDecimal totalAmount = assetPortfolioRepository.findByMember(member)
+                .map(AssetPortfolio::getTotalAmount)
+                .orElse(BigDecimal.ZERO);
+
+        return MemberConverter.toMyPageDTO(member, totalAmount);
     }
 }

@@ -59,11 +59,11 @@ public class AssetController {
     }
 
     @PostMapping("/modify-investment")
-    @Operation(summary = "투자 자산 수정 API", description = "회원의 투자 자산을 수정합니다.")
-    public ApiResponse<Void> updateInvestment(@CurrentMember Member member,
+    @Operation(summary = "투자 자산 수정 API", description = "회원의 투자 자산을 수정합니다. 입력 값을 응답으로 반환합니다.")
+    public ApiResponse<AssetResponseDTO.updateInvestmentResponseDTO> updateInvestment(@CurrentMember Member member,
                                         @RequestBody @Valid AssetRequestDTO.UpdateInvestmentsRequest request) {
-        assetQueryService.updateInvestment(member, request);
-        return ApiResponse.onSuccess(null);
+        AssetResponseDTO.updateInvestmentResponseDTO response = assetQueryService.updateInvestment(member, request);
+        return ApiResponse.onSuccess(response);
     }
 
     @PostMapping("/modify-other")

@@ -1,5 +1,7 @@
 package com.growplan.domain.asset.dto;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,5 +34,17 @@ public class AssetResponseDTO {
         BigDecimal bitcoinRatioPercent;
         BigDecimal bondRatioPercent;
         BigDecimal etfRatioPercent;
+    }
+
+    @Getter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class updateInvestmentResponseDTO {
+
+        BigDecimal stockAmount;
+        BigDecimal bitcoinAmount;
+        BigDecimal bondAmount;
+        BigDecimal etfAmount;
     }
 }

@@ -52,4 +52,12 @@ public class MemberController {
                 "email", principal.getMember().getEmail()
         );
     }
+
+    @GetMapping("/mypage")
+    @Operation(summary = "마이페이지 조회 API", description = "마이페이지 조회 API 입니다.")
+    public ApiResponse<MemberResponseDTO.MyPageDTO> getMyPage(@CurrentMember Member member) {
+
+        MemberResponseDTO.MyPageDTO myPage = memberService.getMyPage(member);
+        return ApiResponse.onSuccess(myPage);
+    }
 }

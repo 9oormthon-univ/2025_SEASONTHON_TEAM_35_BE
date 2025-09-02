@@ -7,7 +7,7 @@ import com.growplan.domain.member.entity.Member;
 public interface AssetQueryService {
 
     AssetResponseDTO.RegisterAssetResponseDTO getAssetSummary(Member member);
-    void updateInvestment(Member member, AssetRequestDTO.UpdateInvestmentsRequest request);
+    AssetResponseDTO.updateInvestmentResponseDTO updateInvestment(Member member, AssetRequestDTO.UpdateInvestmentsRequest request);
     void updateCash(Member member, AssetRequestDTO.UpdateCashRequest request);
     void updateOthers(Member member, AssetRequestDTO.UpdateOthersRequest request);
 }

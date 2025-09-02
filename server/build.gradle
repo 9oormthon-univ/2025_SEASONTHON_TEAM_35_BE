@@ -63,6 +63,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// websocket
+	implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
 
 tasks.named('test') {

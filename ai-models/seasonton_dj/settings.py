@@ -23,9 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-5#9d^+nxcbit2zb9we!)6d&g$2$cg4xvvg3-noyn73yf4w&%s7"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["two025-seasonthon-team-35-be.onrender.com"]
+CSRF_TRUSTED_ORIGINS = ["https://two025-seasonthon-team-35-be.onrender.com"]
 
 
 # Application definition

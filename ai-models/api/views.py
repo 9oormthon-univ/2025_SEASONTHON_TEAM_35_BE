@@ -1,6 +1,7 @@
 import json, time
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.http import require_POST, require_GET
+from django.views.decorators.csrf import csrf_exempt
 
 # api/portfolio.py 기준 상대 임포트
 from .portfolio import PortfolioRecommender
@@ -12,7 +13,7 @@ def _parse_json(body: bytes):
     except Exception:
         return None
 
-
+@csrf_exempt
 @require_POST
 def recommend(request):
     data = _parse_json(request.body)
@@ -41,7 +42,7 @@ def recommend(request):
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
 
-
+@csrf_exempt
 @require_POST
 def current_price(request):
     data = _parse_json(request.body)
@@ -80,7 +81,7 @@ def price_change(request):
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
 
-
+@csrf_exempt
 @require_GET
 def healthz(_request):
     return HttpResponse("ok")

@@ -17,6 +17,7 @@ class PortfolioRecommender:
         self.assets = assets or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]
         self.assets = sorted(self.assets)
         self.rf = rf
+        self.lookback_years = lookback_years
         # 날짜 범위
         now = dt.datetime.now() - dt.timedelta(days=1)
         start = now - dt.timedelta(days=365 * self.lookback_years)

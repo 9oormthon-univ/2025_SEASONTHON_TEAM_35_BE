@@ -6,6 +6,8 @@ import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 public class RecommendationRequestDTO {
 
     @Getter
@@ -20,4 +22,5 @@ public class RecommendationRequestDTO {
         private InvestmentPurpose investmentPurpose; // 투자 목적
         private Boolean emergencyFund;
     }
+
 }

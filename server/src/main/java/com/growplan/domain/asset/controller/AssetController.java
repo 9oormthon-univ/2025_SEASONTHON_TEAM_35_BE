@@ -28,6 +28,8 @@ public class AssetController {
                     <pre><code>{
                       "assetList": [
                         { "assetType": "CASH", "amount": 10000000 },
+                        { "assetType": "DEPOSIT", "amount": 10000000 },
+                        { "assetType": "SAVINGS", "amount": 10000000 },
                         { "assetType": "STOCK", "amount": 5000000 },
                         { "assetType": "BOND", "amount": 2000000 },
                         { "assetType": "ETF", "amount": 1500000 },
@@ -55,6 +57,22 @@ public class AssetController {
     public ApiResponse<Void> updateCash(@CurrentMember Member member,
                                         @RequestBody @Valid AssetRequestDTO.UpdateCashRequest request) {
         assetQueryService.updateCash(member, request);
+        return ApiResponse.onSuccess(null);
+    }
+
+    @PostMapping("/modify-deposit")
+    @Operation(summary = "예금 자산 수정 API", description = "회원의 예금 자산을 수정합니다.")
+    public ApiResponse<Void> updateDeposit(@CurrentMember Member member,
+                                        @RequestBody @Valid AssetRequestDTO.UpdateDepositRequest request) {
+        assetQueryService.updateDeposit(member, request);
+        return ApiResponse.onSuccess(null);
+    }
+
+    @PostMapping("/modify-savings")
+    @Operation(summary = "적금 자산 수정 API", description = "회원의 적금 자산을 수정합니다.")
+    public ApiResponse<Void> updateSavings(@CurrentMember Member member,
+                                        @RequestBody @Valid AssetRequestDTO.UpdateSavingsRequest request) {
+        assetQueryService.updateSavings(member, request);
         return ApiResponse.onSuccess(null);
     }
 

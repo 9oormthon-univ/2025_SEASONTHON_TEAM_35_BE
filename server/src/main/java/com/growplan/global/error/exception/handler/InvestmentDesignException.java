@@ -1,0 +1,11 @@
+package com.growplan.global.error.exception.handler;
+
+import com.growplan.global.error.code.BaseErrorCode;
+import com.growplan.global.error.exception.GeneralException;
+
+public class InvestmentDesignException extends GeneralException {
+
+    public InvestmentDesignException(BaseErrorCode errorCode) {
+        super(errorCode);
+    }
+}

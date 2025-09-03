@@ -32,6 +32,8 @@ public class AssetConverter {
     public static AssetResponseDTO.RegisterAssetResponseDTO toRegisterAssetResponse (
             BigDecimal total,
             BigDecimal cash,
+            BigDecimal deposit,
+            BigDecimal savings,
             BigDecimal invested,
             BigDecimal other,
             BigDecimal stock,
@@ -49,6 +51,12 @@ public class AssetConverter {
 
                 .cashAmount(cash)
                 .cashRatioPercent(percent(cash, total))
+
+                .depositAmount(deposit)
+                .depositRatioPercent(percent(deposit, total))
+
+                .savingsAmount(savings)
+                .savingsRatioPercent(percent(savings, total))
 
                 .investedAmount(invested)
                 .investedRatioPercent(percent(invested, total))

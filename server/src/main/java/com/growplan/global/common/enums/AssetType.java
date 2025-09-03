@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum AssetType { // 자산 종류
 
     CASH("현금"),
+    DEPOSIT("예금"),
+    SAVINGS("적금"),
     STOCK("주식"),
     BITCOIN("비트코인"),
     BOND("채권"),

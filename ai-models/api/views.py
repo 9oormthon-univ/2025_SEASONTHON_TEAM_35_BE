@@ -2,15 +2,21 @@ import json, time
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.http import require_POST, require_GET
 
-# 최상단에 있는 portfolio.py의 PortfolioRecommender 사용
-# (파일이 레포 루트에 있으므로, 파이썬 경로상 현재 작업 디렉터리 기준 import 가능)
-from portfolio import PortfolioRecommender  # 클래스가 존재한다고 가정
+# api/portfolio.py 기준 상대 임포트
+from .portfolio import PortfolioRecommender
+
+
+def _parse_json(body: bytes):
+    try:
+        return json.loads(body.decode("utf-8"))
+    except Exception:
+        return None
+
 
 @require_POST
 def recommend(request):
-    try:
-        data = json.loads(request.body.decode("utf-8"))
-    except Exception:
+    data = _parse_json(request.body)
+    if data is None:
         return HttpResponseBadRequest(JsonResponse({"error": "invalid_json"}).content)
 
     assets = data.get("assets") or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]
@@ -34,6 +40,46 @@ def recommend(request):
         return JsonResponse(resp, json_dumps_params={"ensure_ascii": False})
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
+
+
+@require_POST
+def current_price(request):
+    data = _parse_json(request.body)
+    if data is None:
+        return HttpResponseBadRequest(JsonResponse({"error": "invalid_json"}).content)
+
+    assets = data.get("assets") or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]
+    lookback_years = int(data.get("lookback_years", 3))
+    rf = float(data.get("rf", 0.0))
+    days = int(data.get("days", 5))
+
+    try:
+        rec = PortfolioRecommender(assets=assets, lookback_years=lookback_years, rf=rf)
+        prices = rec.get_current_price(days=days, verbose=False)
+        return JsonResponse({"prices": prices})
+    except Exception as e:
+        return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
+
+
+@require_POST
+def price_change(request):
+    data = _parse_json(request.body)
+    if data is None:
+        return HttpResponseBadRequest(JsonResponse({"error": "invalid_json"}).content)
+
+    assets = data.get("assets") or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]
+    lookback_years = int(data.get("lookback_years", 3))
+    rf = float(data.get("rf", 0.0))
+    periods = int(data.get("periods", 1))  # 전일 대비: 1
+    days = int(data.get("days", 6))
+
+    try:
+        rec = PortfolioRecommender(assets=assets, lookback_years=lookback_years, rf=rf)
+        changes = rec.get_current_price_change(periods=periods, days=days, verbose=False)
+        return JsonResponse({"changes": changes})
+    except Exception as e:
+        return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
+
 
 @require_GET
 def healthz(_request):

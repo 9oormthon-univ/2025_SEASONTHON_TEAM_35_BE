@@ -1,6 +1,7 @@
 package com.growplan.domain.member.entity;
 
 import com.growplan.domain.asset.entity.AssetPortfolio;
+import com.growplan.domain.goal.entity.Goal;
 import com.growplan.domain.recommendation.entity.InvestmentDesign;
 import com.growplan.domain.recommendation.entity.Recommendation;
 import com.growplan.global.common.BaseEntity;
@@ -43,4 +44,7 @@ public class Member extends BaseEntity {
 
     @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<InvestmentDesign> investmentDesign = new ArrayList<>();
+
+    @OneToMany(mappedBy = "member", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Goal> goal = new ArrayList<>();
 }

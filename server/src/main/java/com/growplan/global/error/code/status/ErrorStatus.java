@@ -24,6 +24,9 @@ public enum ErrorStatus implements BaseErrorCode {
     ASSET_ITEM_INVALID_REQUEST(HttpStatus.NOT_FOUND, "ASSET402", "기타로 수정할 수 없는 타입입니다."),
     ASSET_NOT_FOUND(HttpStatus.NOT_FOUND, "ASSET404", "아직 자산을 입력하지 않았습니다."),
 
+    // Investment
+    INVESTMENT_DESIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "INVESTMENT404", "투자 설계 정보를 찾을 수 없습니다."),
+
     // Jwt
     EMPTY_TOKEN(HttpStatus.UNAUTHORIZED, "TOKEN400", "헤더에 토큰이 비어 있습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "TOKEN401", "토큰이 유효하지 않습니다."),

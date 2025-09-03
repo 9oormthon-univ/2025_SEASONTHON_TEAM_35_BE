@@ -27,10 +27,13 @@ class PortfolioRecommender:
         self.returns = None
 
     def load_prices(self):
-        data = yf.download(self.assets, start=self.start, end=self.now)
+        end = (pd.Timestamp.utcnow().normalize()-pd.Timedelta(days=1)).date()
+        start = end - pd.Timedelta(days=365 * self.lookback_years)
+        data = yf.download(self.assets, start=str(start), end=str(end), interval='1d', auto_adjust=True, threads=False)
         data = data.loc[:, ('Close', slice(None))]
         data.columns = self.assets
         self.prices = data
+        self.prices.ffill(inplace=True)
         return self.prices
 
     def get_returns(self):

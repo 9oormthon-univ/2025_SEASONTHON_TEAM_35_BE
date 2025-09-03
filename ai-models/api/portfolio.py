@@ -19,7 +19,7 @@ class PortfolioRecommender:
         self.rf = rf
         # 날짜 범위
         now = dt.datetime.now() - dt.timedelta(days=1)
-        start = now - dt.timedelta(days=365 * lookback_years)
+        start = now - dt.timedelta(days=365 * self.lookback_years)
         self.now = now
         self.start = start.strftime("%Y-%m-%d")
 

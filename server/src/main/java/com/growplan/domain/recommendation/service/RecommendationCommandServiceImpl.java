@@ -71,7 +71,6 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         BigDecimal totalAmount = portfolio.getTotalAmount() == null ? BigDecimal.ZERO : portfolio.getTotalAmount();
 
         int monthlyIncome = incomeRangeToMonthly(design.getIncomeRange());
-        int emergencyFund = calcEmergencyFund(monthlyIncome);
 
         // 총점(성향/기간/목적/목표수익률-대응) → 안전/투자 큰 비율
         int totalScore = 0;

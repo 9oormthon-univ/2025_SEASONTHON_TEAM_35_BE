@@ -50,17 +50,26 @@ public class OAuthLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHand
         // 액세스 토큰 발급
         String accessToken = jwtUtil.generateAccessToken(member.getMemberId());
 
-        // 액세스 토큰, role, venueId를 담아 리다이렉트 uri 생성
-        String redirectUri = setRedirectUri(accessToken);
+        // 액세스 토큰을담아 리다이렉트 uri 생성
+        String redirectUri = setRedirectUri(accessToken, member);
 
         getRedirectStrategy().sendRedirect(request, response, redirectUri);
     }
 
-    private String setRedirectUri(String accessToken) {
+    private String setRedirectUri(String accessToken, Member member) {
         String encodedToken = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
-        String redirectUri = REDIRECT_URI + "?access_token=" + encodedToken;
+        String encodedName  = URLEncoder.encode(getMemberName(member), StandardCharsets.UTF_8);
+        String redirectUri = REDIRECT_URI + "?access_token=" + encodedToken + "&name=" + encodedName;
 
         log.info("🔗 최종 Redirect URL: {}", redirectUri); // 로그 추가
         return redirectUri;
+    }
+
+    private String getMemberName(Member member) {
+        String name = member.getName();
+        if (name == null || name.isEmpty()) {
+            return "임시 유저";
+        }
+        return name;
     }
 }

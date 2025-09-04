@@ -1,0 +1,13 @@
+name: Keep-Alive Ping
+
+on:
+  schedule:
+    # 14분마다 실행 (UTC 기준)
+    - cron: '*/13 * * * *'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send a ping to the web service
+        run: curl -s https://two025-seasonthon-team-35-be.onrender.com > /dev/null

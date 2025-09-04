@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 public class RecommendationRequestDTO {
 
@@ -22,5 +24,4 @@ public class RecommendationRequestDTO {
         private InvestmentPurpose investmentPurpose; // 투자 목적
         private Boolean emergencyFund;
     }
-
 }

@@ -86,10 +86,12 @@ public class GoalCommandServiceImpl implements GoalCommandService {
 
     private static String evaluateFeasibility(int needPerMonth, int capacity, int income, Propensity p) {
         double capFactor, incomePct;
-        switch (p == null ? Propensity.COMMON : p) {
+        switch (p == null ? Propensity.ACTIVE : p) {
             case STABLE -> { capFactor = 1.0; incomePct = 0.30; }
-            case ACTIVE -> { capFactor = 1.5; incomePct = 0.50; }
-            default       -> { capFactor = 1.2; incomePct = 0.40; } // COMMON
+            case SAFETY -> { capFactor = 1.2; incomePct = 0.40; }
+            case AGGRESSIVE -> { capFactor = 1.7; incomePct = 0.60; }
+            case AGGRESSIVE_INVESTMENT -> { capFactor = 2.0; incomePct = 0.70; }
+            default       -> { capFactor = 1.5; incomePct = 0.50; } // ACTIVE
         }
         int capLimit = (int)Math.round(capacity * capFactor);
         int incomeLimit = (int)Math.round(income * incomePct);

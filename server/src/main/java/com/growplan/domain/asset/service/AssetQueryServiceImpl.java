@@ -34,36 +34,61 @@ public class AssetQueryServiceImpl implements AssetQueryService {
     @Transactional(readOnly = true)
     public AssetResponseDTO.RegisterAssetResponseDTO getAssetSummary(Member member) {
 
+        AssetConverter.AssetDummySpec spec = AssetConverter.dummySpec();
+
         AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
                 .orElseGet(() -> AssetConverter.toAssetPortfolio(member));
-        List<AssetItem> items = portfolio.getItems(); // LAZY, 트랜잭션 내에서 접근
 
-        // 총액
-        BigDecimal totalAmount = sumAll(items);
-        // 현금
-        BigDecimal cash = sumByType(items, AssetType.CASH);
-        // 예금
-        BigDecimal deposit = sumByType(items, AssetType.DEPOSIT);
-        // 적금
-        BigDecimal savings = sumByType(items, AssetType.SAVINGS);
-        // 투자
-        BigDecimal totalInvestedAmount = sumByInvestment(items, INVESTMENT_TYPES);
-        // 기타 = 총액 - (현금+투자), 음수 방지
-        BigDecimal other = safe(totalAmount.subtract(cash).subtract(totalInvestedAmount));
+        upsertItem(portfolio, AssetType.CASH,     spec.cash());
+        upsertItem(portfolio, AssetType.DEPOSIT,  spec.deposit());
+        upsertItem(portfolio, AssetType.SAVINGS,  spec.savings());
+        upsertItem(portfolio, AssetType.OTHER,    spec.other());
 
-        if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
-            throw new AssetException(ErrorStatus.ASSET_NOT_FOUND);
-        }
+        upsertItem(portfolio, AssetType.STOCK,    spec.stock());
+        upsertItem(portfolio, AssetType.BITCOIN,  spec.bitcoin());
+        upsertItem(portfolio, AssetType.BOND,     spec.bond());
+        upsertItem(portfolio, AssetType.ETF,      spec.etf());
 
-        portfolio.updateTotals(totalAmount, totalInvestedAmount);
+        portfolio.recalculateTotalsAndPercentages(); // 엔티티 내 총액/비율 재계산
+        assetPortfolioRepository.save(portfolio);
 
-        BigDecimal stock = sumByType(items, AssetType.STOCK);
-        BigDecimal bitcoin = sumByType(items, AssetType.BITCOIN);
-        BigDecimal bond = sumByType(items, AssetType.BOND);
-        BigDecimal etf = sumByType(items, AssetType.ETF);
-
-        return toRegisterAssetResponse(totalAmount, cash, deposit, savings, totalInvestedAmount, other, stock, bitcoin, bond, etf);
+        return AssetConverter.toRegisterAssetResponse(spec);
     }
+
+//    @Override
+//    @Transactional(readOnly = true)
+//    public AssetResponseDTO.RegisterAssetResponseDTO getAssetSummary(Member member) {
+//
+//        AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
+//                .orElseGet(() -> AssetConverter.toAssetPortfolio(member));
+//        List<AssetItem> items = portfolio.getItems(); // LAZY, 트랜잭션 내에서 접근
+//
+//        // 총액
+//        BigDecimal totalAmount = sumAll(items);
+//        // 현금
+//        BigDecimal cash = sumByType(items, AssetType.CASH);
+//        // 예금
+//        BigDecimal deposit = sumByType(items, AssetType.DEPOSIT);
+//        // 적금
+//        BigDecimal savings = sumByType(items, AssetType.SAVINGS);
+//        // 투자
+//        BigDecimal totalInvestedAmount = sumByInvestment(items, INVESTMENT_TYPES);
+//        // 기타 = 총액 - (현금+투자), 음수 방지
+//        BigDecimal other = safe(totalAmount.subtract(cash).subtract(totalInvestedAmount));
+//
+//        if (totalAmount.compareTo(BigDecimal.ZERO) == 0) {
+//            throw new AssetException(ErrorStatus.ASSET_NOT_FOUND);
+//        }
+//
+//        portfolio.updateTotals(totalAmount, totalInvestedAmount);
+//
+//        BigDecimal stock = sumByType(items, AssetType.STOCK);
+//        BigDecimal bitcoin = sumByType(items, AssetType.BITCOIN);
+//        BigDecimal bond = sumByType(items, AssetType.BOND);
+//        BigDecimal etf = sumByType(items, AssetType.ETF);
+//
+//        return toRegisterAssetResponse(totalAmount, cash, deposit, savings, totalInvestedAmount, other, stock, bitcoin, bond, etf);
+//    }
 
     @Override
     public void updateCash(Member member, AssetRequestDTO.UpdateCashRequest request) { // 현금 수정

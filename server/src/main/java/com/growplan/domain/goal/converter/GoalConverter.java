@@ -19,7 +19,7 @@ public class GoalConverter {
             BigDecimal targetAmount,
             int emergencyFund,
             InvestmentPurpose purpose,
-            int neededMonthlySaving, // 만원 단위
+            int neededMonthlySaving,
             String feasibilityText
     ) {
         BigDecimal total = nvl(totalAmount).setScale(MONEY_SCALE, RM);
@@ -27,11 +27,11 @@ public class GoalConverter {
         BigDecimal emergency = BigDecimal.valueOf(emergencyFund).setScale(MONEY_SCALE, RM);
 
         StringBuilder sb = new StringBuilder();
-        sb.append("현재 자산은 ").append(total.toPlainString()).append("만원이며, ")
-                .append("매달 약 ").append(neededMonthlySaving).append("만원 저축이 필요합니다.\n")
+        sb.append("현재 자산은 ").append(total.toPlainString()).append("원이며, ")
+                .append("매달 약 ").append(neededMonthlySaving).append("원 저축이 필요합니다.\n")
                 .append(feasibilityText).append("\n")
                 .append("예상치 못한 지출 대비 비상 자금은 최소 ")
-                .append(emergency.toPlainString()).append("만원 이상 유지하시길 권장드립니다.");
+                .append(emergency.toPlainString()).append("원 이상 유지하시길 권장드립니다.");
 
         return GoalResponseDTO.GoalAnalysisResponseDTO.builder()
                 .totalAmount(total)

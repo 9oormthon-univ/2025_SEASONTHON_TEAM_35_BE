@@ -25,6 +25,8 @@ public class RecommendationResponseDTO {
         private BigDecimal investmentAmount;
         private BigDecimal investmentRatioPct;
 
+        private String recommendationMessage;
+
         private BigDecimal totalAmount;
         private IncomeRange incomeRange;
         private InvestmentPeriod investmentPeriod;

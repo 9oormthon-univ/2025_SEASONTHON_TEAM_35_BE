@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import riskfolio as rp
+import os
 
 
 class PortfolioRecommender:
@@ -8,12 +9,13 @@ class PortfolioRecommender:
     CSV(prices_3y.csv)의 Close만 사용하여 수익률 계산 → CVaR 효율적 경계선으로 가중치 산출.
     """
 
-    def __init__(self, assets=None, lookback_years=3, rf=0.0, csv_path="prices_3y.csv"):
+    def __init__(self, assets=None, lookback_years=3, rf=0.0, csv_path=None):
         self.rf = rf
         self.lookback_years = lookback_years
         self.assets = sorted(assets or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"])
 
         # 1) CSV 로드(멀티헤더) → Close 전부 추출
+        csv_path = csv_path or os.path.join(os.path.dirname(__file__), "prices_3y.csv")
         data = pd.read_csv(csv_path, header=[0, 1])
 
         close = data['Close']

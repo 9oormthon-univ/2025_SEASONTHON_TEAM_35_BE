@@ -1,10 +1,15 @@
-import json, time
+import os
+import json
+import time
+
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import csrf_exempt
 
-# api/portfolio.py 기준 상대 임포트
-from portfolio import PortfolioRecommender
+# 실제 사용하는 파일명에 맞춰 수정하세요: .portfolio / .portfolio1 / .portfolio2
+from .portfolio import PortfolioRecommender
+
+CSV_PATH = os.path.join(os.path.dirname(__file__), "prices_3y.csv")
 
 
 def _parse_json(body: bytes):
@@ -12,6 +17,7 @@ def _parse_json(body: bytes):
         return json.loads(body.decode("utf-8"))
     except Exception:
         return None
+
 
 @csrf_exempt
 @require_POST
@@ -28,7 +34,9 @@ def recommend(request):
 
     t0 = time.time()
     try:
-        rec = PortfolioRecommender(assets=assets, lookback_years=lookback_years, rf=rf)
+        rec = PortfolioRecommender(
+            assets=assets, lookback_years=lookback_years, rf=rf, csv_path=CSV_PATH
+        )
         result = rec.recommend(risk_level=risk_level, points=points)
         resp = {
             "annual_return": float(result["annual_return"]),
@@ -42,6 +50,7 @@ def recommend(request):
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
 
+
 @csrf_exempt
 @require_POST
 def current_price(request):
@@ -52,16 +61,18 @@ def current_price(request):
     assets = data.get("assets") or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]
     lookback_years = int(data.get("lookback_years", 3))
     rf = float(data.get("rf", 0.0))
-    days = int(data.get("days", 5))
 
     try:
-        rec = PortfolioRecommender(assets=assets, lookback_years=lookback_years, rf=rf)
-        prices = rec.get_current_price(days=days, verbose=False)
-        return JsonResponse({"prices": prices})
+        rec = PortfolioRecommender(
+            assets=assets, lookback_years=lookback_years, rf=rf, csv_path=CSV_PATH
+        )
+        df = rec.get_current_price()  # DataFrame (마지막 1행만 의미)
+        return JsonResponse({"prices": df.iloc[-1].to_dict()})
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
 
 
+@csrf_exempt
 @require_POST
 def price_change(request):
     data = _parse_json(request.body)
@@ -71,15 +82,16 @@ def price_change(request):
     assets = data.get("assets") or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]
     lookback_years = int(data.get("lookback_years", 3))
     rf = float(data.get("rf", 0.0))
-    periods = int(data.get("periods", 1))  # 전일 대비: 1
-    days = int(data.get("days", 6))
 
     try:
-        rec = PortfolioRecommender(assets=assets, lookback_years=lookback_years, rf=rf)
-        changes = rec.get_current_price_change(periods=periods, days=days, verbose=False)
-        return JsonResponse({"changes": changes})
+        rec = PortfolioRecommender(
+            assets=assets, lookback_years=lookback_years, rf=rf, csv_path=CSV_PATH
+        )
+        changes = rec.get_current_price_change()  # Series(등락률 %)
+        return JsonResponse({"changes": {k: float(v) for k, v in changes.items()}})
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
+
 
 @csrf_exempt
 @require_GET

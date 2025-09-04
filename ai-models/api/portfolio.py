@@ -15,7 +15,7 @@ class PortfolioRecommender:
         self.assets = sorted(assets or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"])
 
         # 1) CSV 로드(멀티헤더) → Close 전부 추출
-        csv_path = "ai-models/api/prices_3y.csv"
+        csv_path = os.path.join(os.path.dirname(__file__), "prices_3y.csv")
         data = pd.read_csv(csv_path, header=[0, 1])
 
         close = data['Close']

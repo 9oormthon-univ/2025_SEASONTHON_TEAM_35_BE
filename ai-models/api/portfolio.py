@@ -20,7 +20,7 @@ class PortfolioRecommender:
         self.lookback_years = lookback_years
         # 날짜 범위
         now = dt.datetime.now() - dt.timedelta(days=1)
-        start = now - dt.timedelta(days=365 * self.lookback_years)
+        start = now - dt.timedelta(days=1 * self.lookback_years)
         self.now = now
         self.start = start.strftime("%Y-%m-%d")
 
@@ -29,7 +29,7 @@ class PortfolioRecommender:
 
     def load_prices(self):
         end = (pd.Timestamp.utcnow().normalize()-pd.Timedelta(days=1)).date()
-        start = end - pd.Timedelta(days=365 * self.lookback_years)
+        start = end - pd.Timedelta(days=1 * self.lookback_years)
         data = yf.download(self.assets, start=str(start), end=str(end), interval='1d', auto_adjust=True, threads=False)
         data = data.loc[:, ('Close', slice(None))]
         data.columns = self.assets
@@ -124,7 +124,7 @@ class PortfolioRecommender:
     
 
 if __name__ == "__main__":
-    rec = PortfolioRecommender(assets=["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"], lookback_years=3, rf=0.0)
+    rec = PortfolioRecommender(assets=["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"], lookback_years=1, rf=0.0)
     result = rec.recommend(risk_level=3, points=10)
 
     print(f"예상 연수익률: {result['annual_return']:.2%}")

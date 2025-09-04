@@ -4,6 +4,10 @@ import yfinance as yf
 import datetime as dt
 import riskfolio as rp
 
+data = pd.read_csv("prices_3y.csv", header=[0, 1])
+close = data['Close']
+close = close.ffill()
+close = close.bfill()
 
 class PortfolioRecommender:
     """
@@ -24,24 +28,8 @@ class PortfolioRecommender:
         self.now = now
         self.start = start.strftime("%Y-%m-%d")
 
-        self.prices = None
-        self.returns = None
-
-    def load_prices(self):
-        end = (pd.Timestamp.utcnow().normalize()-pd.Timedelta(days=1)).date()
-        start = end - pd.Timedelta(days=1 * self.lookback_years)
-        data = yf.download(self.assets, start=str(start), end=str(end), interval='1d', auto_adjust=True, threads=False)
-        data = data.loc[:, ('Close', slice(None))]
-        data.columns = self.assets
-        self.prices = data
-        self.prices.ffill(inplace=True)
-        return self.prices
-
-    def get_returns(self):
-        if self.prices is None:
-            self.load_prices()
-        self.returns = self.prices.pct_change().dropna()
-        return self.returns
+        self.prices = close
+        self.returns = close.pct_change().dropna()
 
     def _risk_contribution_share(self, Y, w_series):
         cov = Y.cov()
@@ -61,7 +49,7 @@ class PortfolioRecommender:
         "weights": {ticker: float}# 종목별 비율(0~1)
         }
         """
-        Y = Y if Y is not None else self.get_returns()
+        Y = Y if Y is not None else self.returns
 
         rm_map = rm_by_level or {1: 'CVaR', 2: 'CVaR', 3: 'CVaR', 4: 'CVaR', 5: 'CVaR'}
         rm = rm_map.get(int(risk_level), 'CVaR')
@@ -95,7 +83,7 @@ class PortfolioRecommender:
 
     def summary_text(self, w, metrics, top_n_weight=3, top_n_rc=2):
         w_top = w.sort_values(ascending=False).head(top_n_weight)
-        rc = self._risk_contribution_share(self.returns if self.returns is not None else self.get_returns(), w)
+        rc = self._risk_contribution_share(self.returns if self.returns is not None else self.returns, w)
         rc_top = rc.head(top_n_rc)
 
         lines = []

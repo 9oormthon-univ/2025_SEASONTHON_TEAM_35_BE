@@ -97,13 +97,16 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
             cash /= sum; depositRatio /= sum; savingsRatio /= sum; investRatio /= sum;
         }
 
+        String recommendationMessage = "String";
+
         // 금액 계산
 //        BigDecimal cashAmt = pctOf(totalAmount, cash);
 //        BigDecimal depAmt  = pctOf(totalAmount, depositRatio);
 //        BigDecimal savAmt  = pctOf(totalAmount, savingsRatio);
 //        BigDecimal invAmt  = pctOf(totalAmount, investRatio);
 
-        return toResponse(totalAmount, cash, depositRatio, savingsRatio, investRatio, design.getIncomeRange(),
+        return toResponse(totalAmount, cash, depositRatio, savingsRatio, investRatio, recommendationMessage,
+                design.getIncomeRange(),
                 design.getInvestmentPeriod(),
                 design.getPropensity());
     }
@@ -177,10 +180,10 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         }
 
         rec.setEtfList(buildDummyAssetCards());
-        rec.setReasonText("String");
-        rec.setHorizon_title(spec.title());
-        rec.setPoint_count(spec.pointCount());
-        rec.setBase_amount(base);
+        rec.setReasonText("String"); // TODO: AI 추천 메시지 추가 예정
+        rec.setHorizonTitle(spec.title());
+        rec.setPointCount(spec.pointCount());
+        rec.setCurrentAmount(base);
         rec.setPeriod(design.getInvestmentPeriod());
         rec.setForecast_points(pts);
 
@@ -360,24 +363,24 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         return java.util.Arrays.asList(
                 RecommendationResponseDTO.AssetCard.builder()
                         .symbol("QQQM")
-                        .etf_name("Invesco NASDAQ 100 ETF")
+                        .etfName("Invesco NASDAQ 100 ETF")
                         .price(new BigDecimal("234.81"))
                         .currency("USD")
-                        .day_change_pct(-1.17)
+                        .dayChangePct(-1.17)
                         .build(),
                 RecommendationResponseDTO.AssetCard.builder()
                         .symbol("277630.KS")
-                        .etf_name("TIGER 코스피")
+                        .etfName("TIGER 코스피")
                         .price(new BigDecimal("33090"))
                         .currency("KRW")
-                        .day_change_pct(-0.17)
+                        .dayChangePct(-0.17)
                         .build(),
                 RecommendationResponseDTO.AssetCard.builder()
                         .symbol("QQQM")
-                        .etf_name("ACE 중장기국공채액티브")
+                        .etfName("ACE 중장기국공채액티브")
                         .price(new BigDecimal("109495"))
                         .currency("KRW")
-                        .day_change_pct(-0.03)
+                        .dayChangePct(-0.03)
                         .build()
         );
     }

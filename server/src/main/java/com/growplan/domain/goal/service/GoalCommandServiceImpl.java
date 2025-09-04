@@ -74,14 +74,23 @@ public class GoalCommandServiceImpl implements GoalCommandService {
         String feasibilityText = evaluateFeasibility(
                 needPerMonth, monthlySavingCapacity.intValue(), monthlyIncome.intValue(), design.getPropensity());
 
+        int achievementRate = achievement(totalAmount, targetAmount);
+
         return GoalConverter.toAnalysisResponse(
                 totalAmount.setScale(MONEY_SCALE, RM),
                 targetAmount,
                 emergencyFund.intValue(),
                 design.getInvestmentPurpose(),
                 needPerMonth,
-                feasibilityText
+                feasibilityText,
+                achievementRate
         );
+    }
+
+    private int achievement(BigDecimal total, BigDecimal target) {
+        if (target.compareTo(BigDecimal.ZERO) <= 0) return 0;
+        return total.multiply(BigDecimal.valueOf(100))
+                .divide(target, 0, RM).intValue();
     }
 
     private static String evaluateFeasibility(int needPerMonth, int capacity, int income, Propensity p) {

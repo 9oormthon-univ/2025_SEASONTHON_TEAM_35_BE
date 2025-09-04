@@ -20,7 +20,8 @@ public class GoalConverter {
             int emergencyFund,
             InvestmentPurpose purpose,
             int neededMonthlySaving,
-            String feasibilityText
+            String feasibilityText,
+            int achievementRate
     ) {
         BigDecimal total = nvl(totalAmount).setScale(MONEY_SCALE, RM);
         BigDecimal target = nvl(targetAmount).setScale(MONEY_SCALE, RM);
@@ -39,6 +40,7 @@ public class GoalConverter {
                 .emergencyFundAmount(emergency)
                 .investmentPurpose(purpose)
                 .analysisText(sb.toString())
+                .achievementRate(achievementRate)
                 .build();
     }
 

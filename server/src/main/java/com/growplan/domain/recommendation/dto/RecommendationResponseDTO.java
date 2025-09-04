@@ -52,9 +52,9 @@ public class RecommendationResponseDTO {
 
         List<AssetCard> etfList;
 
-        private String horizon_title;             // "6개월" / "1년" / "2년" / "3년" / "5년" / "10년"
-        private Integer point_count;              // 3 / 4 / 6
-        private BigDecimal base_amount;           // 현재 총자산
+        private String horizonTitle;             // "6개월" / "1년" / "2년" / "3년" / "5년" / "10년"
+        private Integer pointCount;              // 3 / 4 / 6
+        private BigDecimal currentAmount;           // 현재 총자산
         private InvestmentPeriod period;          // 사용자가 입력한 투자기간
         private List<ForecastPoint> forecast_points; // 차트 포인트 배열
     }
@@ -77,9 +77,9 @@ public class RecommendationResponseDTO {
     @AllArgsConstructor
     public static class AssetCard {
         private String symbol;          // 예: "QQQM", "277630.KS"
-        private String etf_name;        // 예: "Invesco NASDAQ 100 ETF", "TIGER 코스피"
+        private String etfName;        // 예: "Invesco NASDAQ 100 ETF", "TIGER 코스피"
         private BigDecimal price;       // 예: 234.81, 33090, 109495
         private String currency;        // 예: "USD", "KRW"
-        private Double day_change_pct;  // 예: -1.17, -0.17, -0.03 (단위 %)
+        private Double dayChangePct;  // 예: -1.17, -0.17, -0.03 (단위 %)
     }
 }

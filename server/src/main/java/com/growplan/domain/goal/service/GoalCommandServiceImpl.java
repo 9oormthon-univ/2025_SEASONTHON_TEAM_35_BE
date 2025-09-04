@@ -30,6 +30,8 @@ public class GoalCommandServiceImpl implements GoalCommandService {
 
     private static final RoundingMode RM = RoundingMode.HALF_UP;
     private static final int MONEY_SCALE = 0; // 만원 단위
+    private static final BigDecimal TEN_THOUSAND = new BigDecimal("10000");
+    private static final BigDecimal TARGET_UPLIFT_RATE = new BigDecimal("0.25");
 
     @Override
     public GoalResponseDTO.GoalAnalysisResponseDTO analyzeGoal(Member member) {
@@ -39,31 +41,43 @@ public class GoalCommandServiceImpl implements GoalCommandService {
         AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
                 .orElseThrow(() -> new AssetException(ErrorStatus.ASSET_NOT_FOUND));
 
-        BigDecimal totalAmount = portfolio.getTotalAmount() == null ? BigDecimal.ZERO : portfolio.getTotalAmount();
+        BigDecimal totalAmount = portfolio.getTotalAmount() == null
+                ? BigDecimal.ZERO : portfolio.getTotalAmount();
 
-        int monthlyIncome = incomeRangeToMonthly(design.getIncomeRange());
-        int emergencyFund = calcEmergencyFund(monthlyIncome);
+        int monthlyIncomeMan = incomeRangeToMonthly(design.getIncomeRange());      // 만원/월
+        int monthlySavingMan = savingRangeToMonthly(design.getSavingRange());     // 만원/월
+        int emergencyFundMan = calcEmergencyFund(monthlyIncomeMan);
+
+        BigDecimal monthlyIncome = BigDecimal.valueOf(monthlyIncomeMan).multiply(TEN_THOUSAND);   // 원/월
+        BigDecimal monthlySavingCapacity = BigDecimal.valueOf(monthlySavingMan).multiply(TEN_THOUSAND); // 원/월
+        BigDecimal emergencyFund = BigDecimal.valueOf(emergencyFundMan).multiply(TEN_THOUSAND);   // 원
 
         // TODO: 목표 금액 임시 생성
         int months = periodToMonths(design.getInvestmentPeriod());
-        int monthlySavingCapacity = savingRangeToMonthly(design.getSavingRange());
         double purposeFactor = purposeFactor(design.getInvestmentPurpose());
 
-        BigDecimal targetAmount = BigDecimal.valueOf((long)Math.round(monthlySavingCapacity * months * purposeFactor))
+        BigDecimal planSavingBase = monthlySavingCapacity
+                .multiply(BigDecimal.valueOf(months))
+                .multiply(BigDecimal.valueOf(purposeFactor));
+
+        BigDecimal planSaving = planSavingBase
+                .multiply(BigDecimal.ONE.add(TARGET_UPLIFT_RATE))
                 .setScale(MONEY_SCALE, RM);
 
+        BigDecimal targetAmount = totalAmount.add(planSaving).setScale(0, RM);
+
         // 월 저축액
-        BigDecimal gap = targetAmount.subtract(totalAmount).max(BigDecimal.ZERO);
+        BigDecimal gap = targetAmount.subtract(totalAmount);
         int needPerMonth = months <= 0 ? 0 :
                 gap.divide(BigDecimal.valueOf(months), 0, RM).intValue();
 
         String feasibilityText = evaluateFeasibility(
-                needPerMonth, monthlySavingCapacity, monthlyIncome, design.getPropensity());
+                needPerMonth, monthlySavingCapacity.intValue(), monthlyIncome.intValue(), design.getPropensity());
 
         return GoalConverter.toAnalysisResponse(
                 totalAmount.setScale(MONEY_SCALE, RM),
                 targetAmount,
-                emergencyFund,
+                emergencyFund.intValue(),
                 design.getInvestmentPurpose(),
                 needPerMonth,
                 feasibilityText

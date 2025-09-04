@@ -10,9 +10,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # FastAPI 소스 경로에 맞게 복사 (main.py가 pyrec/app/main.py 라면)
-COPY app ./app
+COPY . .
 # 필요하면 CSV나 데이터 파일도 여기서 복사
-# COPY prices_3y.csv ./app/prices_3y.csv
+COPY prices_3y.csv ./app/prices_3y.csv
 
 EXPOSE 8001
 CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8001"]

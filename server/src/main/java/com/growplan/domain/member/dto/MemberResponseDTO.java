@@ -15,7 +15,9 @@ public class MemberResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class LoginSuccessDTO {
+
         String accessToken;
+        String name;
     }
 
     @Builder

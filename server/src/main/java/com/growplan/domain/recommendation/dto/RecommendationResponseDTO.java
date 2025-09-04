@@ -34,27 +34,4 @@ public class RecommendationResponseDTO {
         private Propensity propensity;
     }
 
-    @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EFResult {
-        private Map<String, BigDecimal> weightsPct;
-        private BigDecimal annualReturnPct;
-        private BigDecimal annualVolPct;
-        private BigDecimal sharpe;
-        private BigDecimal maxDrawdownPct;
-    }
-
-    // ▼ 신규: /etf 응답
-    @Getter
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EtfSnapshot {
-        private Map<String, BigDecimal> lastPrices;
-        private Map<String, BigDecimal> dayChangePct;
-        private String asOf;
-        private EFResult efResult; // 가중치/지표
-    }
 }

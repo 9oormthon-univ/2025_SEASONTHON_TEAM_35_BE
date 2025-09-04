@@ -1,19 +1,15 @@
 package com.growplan.domain.recommendation.service;
 
-import com.growplan.domain.asset.converter.AssetConverter;
 import com.growplan.domain.asset.entity.AssetPortfolio;
 import com.growplan.domain.asset.repository.AssetPortfolioRepository;
 import com.growplan.domain.member.entity.Member;
 import com.growplan.domain.recommendation.converter.RecommendationConverter;
-import com.growplan.domain.recommendation.dto.PyRecDtos;
 import com.growplan.domain.recommendation.dto.RecommendationRequestDTO;
 import com.growplan.domain.recommendation.dto.RecommendationResponseDTO;
 import com.growplan.domain.recommendation.entity.InvestmentDesign;
-import com.growplan.domain.recommendation.entity.Recommendation;
 import com.growplan.domain.recommendation.repository.InvestmentDesignRepository;
 import com.growplan.domain.recommendation.repository.RecommendationRepository;
 import com.growplan.global.common.enums.*;
-import com.growplan.global.config.PyRecClient;
 import com.growplan.global.error.code.status.ErrorStatus;
 import com.growplan.global.error.exception.handler.AssetException;
 import com.growplan.global.error.exception.handler.InvestmentDesignException;
@@ -22,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 
 import static com.growplan.domain.recommendation.converter.RecommendationConverter.toResponse;
 
@@ -39,21 +34,6 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
     private final InvestmentDesignRepository investmentDesignRepository;
     private final AssetPortfolioRepository assetPortfolioRepository;
 
-    private final RecommendationRepository recommendationRepository;     // ▼ 추가
-    private final PyRecClient pyRecClient;                                // ▼ 추가
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper; // ▼ 추가
-
-    private static final java.util.List<String> DEFAULT_ASSETS =
-            java.util.List.of("SPY","QQQM","277630.KS","272910.KS","IMTB");
-
-//    @Override
-//    public void designInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request) {
-//
-//        InvestmentDesign design = investmentDesignRepository.findByMember(member)
-//                .orElseGet(() -> RecommendationConverter.toCreateDesign(member, request));
-//
-//        investmentDesignRepository.save(design);
-//    }
 
     @Override
     public void designInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request) {
@@ -61,74 +41,9 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         InvestmentDesign design = investmentDesignRepository.findByMember(member)
                 .orElseGet(() -> RecommendationConverter.toCreateDesign(member, request));
 
-        // 신규/갱신 공통 필드 반영
-        if (design.getInvestmentPurpose() == null) {
-            // 최초 생성 시에만 세팅하고 싶다면 분기, 아니라면 request 값으로 전부 갱신
-        }
-        // 간단히 request로 동기화 (선호에 따라 선택)
-        InvestmentDesign updated = InvestmentDesign.builder()
-                .investmentDesignId(design.getInvestmentDesignId())
-                .savingRange(request.getSavingRange())
-                .incomeRange(request.getIncomeRange())
-                .profitRange(request.getProfitRange())
-                .investmentPeriod(request.getInvestmentPeriod())
-                .propensity(request.getPropensity())
-                .investmentPurpose(request.getInvestmentPurpose())
-                .emergencyFund(Boolean.TRUE.equals(request.getEmergencyFund()))
-                .member(member)
-                .build();
-
-        investmentDesignRepository.save(updated);
-
-        // --- FastAPI 호출 (성향 -> risk_level) ---
-        PyRecDtos.RecRequest pyReq = new PyRecDtos.RecRequest();
-        pyReq.assets = DEFAULT_ASSETS;
-        pyReq.rf = 0.0;
-        pyReq.points = 10;
-        pyReq.risk_level = toRiskLevel(request.getPropensity());
-        pyReq.use_csv = true;
-        pyReq.lookback_years = 3;
-
-        PyRecDtos.RecResponse pyRes = null;
-        try {
-            pyRes = pyRecClient.recommend(pyReq);
-        } catch (Exception e) {
-            // 실패해도 설계 저장은 성공시킴
-            // 필요 시 로깅
-        }
-
-        // --- 결과 저장(Recommendation) ---
-        Recommendation rec = recommendationRepository.findByDesign(updated)
-                .orElseGet(() -> Recommendation.builder()
-                        .design(updated)
-                        .member(member)
-                        .build());
-
-        if (pyRes != null) {
-            try {
-                rec = Recommendation.builder()
-                        .recommendationId(rec.getRecommendationId())
-                        .design(updated)
-                        .member(member) // ✅ 추가 (NOT NULL 보장)
-                        .efPayloadJson(objectMapper.writeValueAsString(pyRes))
-                        .assetsCsv(String.join(",", DEFAULT_ASSETS))
-                        .asOf(pyRes.as_of)
-                        // 선택: 기존 사유 텍스트 유지
-                        .reasonText(rec.getReasonText())
-                        .analysisText(rec.getAnalysisText())
-                        .build();
-            } catch (com.fasterxml.jackson.core.JsonProcessingException ex) {
-                // JSON 직렬화 실패 시 payload는 null 저장도 가능
-                rec = Recommendation.builder()
-                        .recommendationId(rec.getRecommendationId())
-                        .design(updated)
-                        .member(member) // ✅
-                        .assetsCsv(String.join(",", DEFAULT_ASSETS))
-                        .build();
-            }
-        }
-        recommendationRepository.save(rec);
+        investmentDesignRepository.save(design);
     }
+
 
     @Override
     @Transactional(readOnly = true)

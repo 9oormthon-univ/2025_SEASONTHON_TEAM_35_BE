@@ -29,8 +29,8 @@ class PortfolioRecommender:
         self.now = now
         self.start = start.strftime("%Y-%m-%d")
 
-        self.prices = close
-        self.returns = close.pct_change().dropna()
+        self.prices = self.close
+        self.returns = self.close.pct_change().dropna()
 
     def _risk_contribution_share(self, Y, w_series):
         cov = Y.cov()

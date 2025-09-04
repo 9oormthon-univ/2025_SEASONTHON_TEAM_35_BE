@@ -4,7 +4,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import csrf_exempt
 
 # api/portfolio.py 기준 상대 임포트
-from .portfolio import PortfolioRecommender
+from portfolio import PortfolioRecommender
 
 
 def _parse_json(body: bytes):

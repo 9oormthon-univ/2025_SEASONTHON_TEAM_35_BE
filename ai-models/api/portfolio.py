@@ -4,10 +4,6 @@ import yfinance as yf
 import datetime as dt
 import riskfolio as rp
 
-data = pd.read_csv("prices_3y.csv", header=[0, 1])
-close = data['Close']
-close = close.ffill()
-close = close.bfill()
 
 class PortfolioRecommender:
     """
@@ -16,6 +12,11 @@ class PortfolioRecommender:
     - 성향별로 효율적 경계선에서 가중치 선택
     - 성과/위험 지표와 상위 비중/변동성 기여를 요약
     """
+
+    data = pd.read_csv("prices_3y.csv", header=[0, 1])
+    close = data['Close']
+    close = close.ffill()
+    close = close.bfill()
 
     def __init__(self, assets=None, lookback_years=3, rf=0.0):
         self.assets = assets or ["SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"]

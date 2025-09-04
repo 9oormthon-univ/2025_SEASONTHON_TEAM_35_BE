@@ -46,7 +46,7 @@ public class AssetController {
 //    }
 
     @GetMapping("/summary")
-    @Operation(summary = "자산 요약 조회 API", description = "회원의 자산 요약 정보를 조회합니다.")
+    @Operation(summary = "자산 정보 조회 API", description = "회원의 자산 요약 정보를 조회합니다.")
     public ApiResponse<AssetResponseDTO.RegisterAssetResponseDTO> getAssetSummary(@CurrentMember Member member) {
         AssetResponseDTO.RegisterAssetResponseDTO response = assetQueryService.getAssetSummary(member);
         return ApiResponse.onSuccess(response);

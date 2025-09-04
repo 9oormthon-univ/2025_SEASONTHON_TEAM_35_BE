@@ -14,25 +14,37 @@ import com.growplan.global.error.code.status.ErrorStatus;
 import com.growplan.global.error.exception.handler.AssetException;
 import com.growplan.global.error.exception.handler.InvestmentDesignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static com.growplan.domain.recommendation.converter.RecommendationConverter.toResponse;
+import static java.lang.Math.pow;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
 public class RecommendationCommandServiceImpl implements RecommendationCommandService {
 
-//    private static final RoundingMode RM = RoundingMode.HALF_UP;
-//    private static final int MONEY_SCALE = 0; // 만원 단위 반올림
-//    private static final int PCT_SCALE = 1;   // 퍼센트 소수 1자리
+    private static final RoundingMode RM = RoundingMode.HALF_UP;
+    private static final int MONEY_SCALE = 0; // 만원 단위 반올림
+    private static final int PCT_SCALE = 1;   // 퍼센트 소수 1자리
     private static final double DEFAULT_CASH_RATIO = 0.10;
 
     private final InvestmentDesignRepository investmentDesignRepository;
     private final AssetPortfolioRepository assetPortfolioRepository;
+    private final WebClient recommendWebClient;
 
 
     @Override
@@ -44,6 +56,8 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         investmentDesignRepository.save(design);
     }
 
+    private record LabelAndYears(String label, double years) {}
+    private record TimelineSpec(String title, int pointCount, List<LabelAndYears> labels) {}
 
     @Override
     @Transactional(readOnly = true)
@@ -83,15 +97,97 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
             cash /= sum; depositRatio /= sum; savingsRatio /= sum; investRatio /= sum;
         }
 
+        String recommendationMessage = "String";
+
         // 금액 계산
 //        BigDecimal cashAmt = pctOf(totalAmount, cash);
 //        BigDecimal depAmt  = pctOf(totalAmount, depositRatio);
 //        BigDecimal savAmt  = pctOf(totalAmount, savingsRatio);
 //        BigDecimal invAmt  = pctOf(totalAmount, investRatio);
 
-        return toResponse(totalAmount, cash, depositRatio, savingsRatio, investRatio, design.getIncomeRange(),
+        return toResponse(totalAmount, cash, depositRatio, savingsRatio, investRatio, recommendationMessage,
+                design.getIncomeRange(),
                 design.getInvestmentPeriod(),
                 design.getPropensity());
+    }
+
+    @Override
+    public RecommendationResponseDTO.RecommendApiResult getExternalInvestment(Member member) {
+
+        InvestmentDesign design = investmentDesignRepository.findByMember(member)
+                .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+        AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
+                .orElseThrow(() -> new AssetException(ErrorStatus.ASSET_NOT_FOUND));
+        BigDecimal base = nvl(portfolio.getTotalAmount()).setScale(MONEY_SCALE, RM);
+
+        int riskLevel = toRiskLevel(design.getPropensity());
+
+        // 2) 요청 바디 구성 (고정 + risk_level만 DB에서)
+        RecommendationRequestDTO.ExternalRecommendRequest body = new RecommendationRequestDTO.ExternalRecommendRequest();
+        body.setAssets(List.of("SPY", "QQQM", "277630.KS", "272910.KS", "IMTB"));
+        body.setRisk_level(riskLevel);
+        body.setLookback_years(3);
+        body.setRf(0.0);
+        body.setPoints(10);
+
+        // 3) 외부 API POST 호출
+//        try {
+//            return recommendWebClient.post()
+//                    .uri("/api/recommend")
+//                    .bodyValue(body)
+//                    .retrieve()
+//                    .onStatus(HttpStatusCode::isError, resp -> resp.bodyToMono(String.class)
+//                            .flatMap(msg -> Mono.error(new IllegalStateException(
+//                                    "Recommend API error: HTTP " + resp.statusCode().value() + " - " + msg))))
+//                    .bodyToMono(RecommendationResponseDTO.RecommendApiResult.class)
+//                    .timeout(Duration.ofSeconds(10))
+//                    .block();
+//
+//        } catch (WebClientResponseException e) {
+//            throw new IllegalStateException("Recommend API HTTP " + e.getRawStatusCode() + " - " + e.getResponseBodyAsString(), e);
+//        } catch (Exception e) {
+//            throw new IllegalStateException("Recommend API call failed", e);
+//        }
+
+        RecommendationResponseDTO.RecommendApiResult rec =
+                recommendWebClient.post()
+                        .uri("/api/recommend")
+                        .bodyValue(buildExternalBody(design.getPropensity()))
+                        .retrieve()
+                        .onStatus(org.springframework.http.HttpStatusCode::isError, resp ->
+                                resp.bodyToMono(String.class).flatMap(msg ->
+                                        reactor.core.publisher.Mono.error(new IllegalStateException(
+                                                "Recommend API error: HTTP " + resp.statusCode().value() + " - " + msg))))
+                        .bodyToMono(RecommendationResponseDTO.RecommendApiResult.class)
+                        .timeout(Duration.ofSeconds(10))
+                        .block();
+        if (rec == null) throw new IllegalStateException("Recommend API returned null");
+
+        // 3) 타임라인 스펙(스크린샷 가이드 그대로)
+        TimelineSpec spec = buildTimeline(design.getInvestmentPeriod());
+
+        // 4) 연복리로 미래값 계산: FV = base * (1+r)^t
+        double r = rec.getAnnual_return(); // 예: 0.1764
+        List<RecommendationResponseDTO.ForecastPoint> pts = new ArrayList<>();
+        for (LabelAndYears ly : spec.labels()) {
+            BigDecimal fv = base.multiply(BigDecimal.valueOf(pow(1.0 + r, ly.years())))
+                    .setScale(MONEY_SCALE, RM);
+            pts.add(RecommendationResponseDTO.ForecastPoint.builder()
+                    .label(ly.label())
+                    .years(ly.years())
+                    .amount(fv)
+                    .build());
+        }
+
+        rec.setEtfList(buildDummyAssetCards());
+        rec.setReasonText("String"); // TODO: AI 추천 메시지 추가 예정
+        rec.setHorizonTitle(spec.title());
+        rec.setPointCount(spec.pointCount());
+        rec.setCurrentAmount(base);
+        rec.setPeriod(design.getInvestmentPeriod());
+        rec.setForecast_points(pts);
+
+        return rec;
     }
 
 //    private static BigDecimal pctOf(BigDecimal total, double ratio01) {
@@ -203,4 +299,91 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
             case AGGRESSIVE_INVESTMENT -> 5;
         };
     }
+    private RecommendationRequestDTO.ExternalRecommendRequest buildExternalBody(com.growplan.global.common.enums.Propensity p) {
+        int riskLevel = toRiskLevel(p);
+        var body = new RecommendationRequestDTO.ExternalRecommendRequest();
+        body.setAssets(java.util.List.of("SPY","QQQM","277630.KS","272910.KS","IMTB"));
+        body.setRisk_level(riskLevel);
+        body.setLookback_years(3);
+        body.setRf(0.0);
+        body.setPoints(10);
+        return body;
+    }
+
+    private static TimelineSpec buildTimeline(InvestmentPeriod p) {
+        if (p == null) {
+            return new TimelineSpec("6개월", 3, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("3개월 후", 0.25),
+                    new LabelAndYears("6개월 후", 0.50)
+            ));
+        }
+        return switch (p) {
+            case UNDER_6_MONTHS -> new TimelineSpec("6개월", 3, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("3개월 후", 0.25),
+                    new LabelAndYears("6개월 후", 0.50)
+            ));
+            case UNDER_1_YEAR -> new TimelineSpec("1년", 3, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("6개월 후", 0.50),
+                    new LabelAndYears("1년 후", 1.0)
+            ));
+            case UNDER_2_YEARS -> new TimelineSpec("2년", 3, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("1년 후", 1.0),
+                    new LabelAndYears("2년 후", 2.0)
+            ));
+            case UNDER_3_YEARS -> new TimelineSpec("3년", 4, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("1년 후", 1.0),
+                    new LabelAndYears("2년 후", 2.0),
+                    new LabelAndYears("3년 후", 3.0)
+            ));
+            case UNDER_5_YEARS -> new TimelineSpec("5년", 6, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("1년 후", 1.0),
+                    new LabelAndYears("2년 후", 2.0),
+                    new LabelAndYears("3년 후", 3.0),
+                    new LabelAndYears("4년 후", 4.0),
+                    new LabelAndYears("5년 후", 5.0)
+            ));
+            case UNDER_10_YEARS, OVER_10_YEARS -> new TimelineSpec("10년", 6, Arrays.asList(
+                    new LabelAndYears("현재", 0.0),
+                    new LabelAndYears("2년 후", 2.0),
+                    new LabelAndYears("4년 후", 4.0),
+                    new LabelAndYears("6년 후", 6.0),
+                    new LabelAndYears("8년 후", 8.0),
+                    new LabelAndYears("10년 후", 10.0)
+            ));
+        };
+    }
+
+    private static List<RecommendationResponseDTO.AssetCard> buildDummyAssetCards() {
+        return java.util.Arrays.asList(
+                RecommendationResponseDTO.AssetCard.builder()
+                        .symbol("QQQM")
+                        .etfName("Invesco NASDAQ 100 ETF")
+                        .price(new BigDecimal("234.81"))
+                        .currency("USD")
+                        .dayChangePct(-1.17)
+                        .build(),
+                RecommendationResponseDTO.AssetCard.builder()
+                        .symbol("277630.KS")
+                        .etfName("TIGER 코스피")
+                        .price(new BigDecimal("33090"))
+                        .currency("KRW")
+                        .dayChangePct(-0.17)
+                        .build(),
+                RecommendationResponseDTO.AssetCard.builder()
+                        .symbol("QQQM")
+                        .etfName("ACE 중장기국공채액티브")
+                        .price(new BigDecimal("109495"))
+                        .currency("KRW")
+                        .dayChangePct(-0.03)
+                        .build()
+        );
+    }
+
+    private static BigDecimal nvl(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
 }

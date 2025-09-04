@@ -8,4 +8,5 @@ public interface RecommendationCommandService {
 
     void designInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request);
     RecommendationResponseDTO.AIPortfolioResponse getAiRecommendedPortfolio(Member member);
+    RecommendationResponseDTO.RecommendApiResult getExternalInvestment(Member member);
 }

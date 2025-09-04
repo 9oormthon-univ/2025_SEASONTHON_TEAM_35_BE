@@ -34,6 +34,7 @@ public class RecommendationConverter {
     public static RecommendationResponseDTO.AIPortfolioResponse toResponse(
             BigDecimal totalAmount,
             double cashRatio, double depositRatio, double savingsRatio, double investmentRatio,
+            String recommendationMessage,
             IncomeRange incomeRange,
             InvestmentPeriod investmentPeriod,
             Propensity propensity
@@ -54,7 +55,7 @@ public class RecommendationConverter {
                 .depositRatioPct(pct(depositRatio))
                 .savingsRatioPct(pct(savingsRatio))
                 .investmentRatioPct(pct(investmentRatio))
-                .recommendationMessage(null)    // 추후 AI 추천 메시지 추가 예정
+                .recommendationMessage(recommendationMessage)    // TODO: AI 추천 메시지 추가 예정
                 .totalAmount(total)
                 .incomeRange(incomeRange)
                 .investmentPeriod(investmentPeriod)

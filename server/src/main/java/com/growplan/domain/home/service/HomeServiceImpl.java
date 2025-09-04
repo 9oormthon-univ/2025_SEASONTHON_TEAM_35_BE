@@ -8,7 +8,9 @@ import com.growplan.domain.goal.dto.GoalResponseDTO;
 import com.growplan.domain.goal.service.GoalCommandService;
 import com.growplan.domain.home.dto.HomeResponseDTO;
 import com.growplan.domain.member.entity.Member;
+import com.growplan.domain.recommendation.dto.RecommendationResponseDTO;
 import com.growplan.domain.recommendation.entity.InvestmentDesign;
+import com.growplan.domain.recommendation.service.RecommendationCommandService;
 import com.growplan.global.error.code.status.ErrorStatus;
 import com.growplan.global.error.exception.handler.AssetException;
 import com.growplan.global.error.exception.handler.InvestmentDesignException;
@@ -27,6 +29,7 @@ public class HomeServiceImpl implements HomeService {
 
     private final AssetQueryService assetQueryService;
     private final GoalCommandService goalCommandService;
+    private final RecommendationCommandService recommendationCommandService;
 
     private static final RoundingMode RM = RoundingMode.HALF_UP;
     private static final int MONEY_SCALE = 0;
@@ -52,7 +55,23 @@ public class HomeServiceImpl implements HomeService {
         GoalResponseDTO.GoalAnalysisResponseDTO goal = goalCommandService.analyzeGoal(member);
         BigDecimal targetAmount = nvl(goal.getTargetAmount()).setScale(MONEY_SCALE, RM);
 
-//        int achievementRate = achievement(total, targetAmount);
+        int achievementRate = achievement(total, targetAmount);
+
+        HomeResponseDTO.InvestmentForecastDTO forecastDto = null;
+        try {
+            RecommendationResponseDTO.RecommendApiResult rec =
+                    recommendationCommandService.getExternalInvestment(member);
+
+            if (rec != null) {
+                forecastDto = HomeResponseDTO.InvestmentForecastDTO.builder()
+                        .horizonTitle(rec.getHorizonTitle())
+                        .pointCount(rec.getPointCount())
+                        .currentAmount(rec.getCurrentAmount())
+                        .period(rec.getPeriod())
+                        .forecastPoints(rec.getForecast_points())
+                        .build();
+            }
+        } catch (Exception ignore) { /* 홈은 실패해도 나머지 정보 제공 */ }
 
         return HomeResponseDTO.OverviewDTO.builder()
                 .name(safeName(member))
@@ -63,7 +82,8 @@ public class HomeServiceImpl implements HomeService {
                 .investRatio(investRatio)
                 .etcRatio(etcRatio)
                 .targetAmount(targetAmount)
-//                .achievementRate(achievementRate)
+                .investmentForecast(forecastDto)
+                .achievementRate(achievementRate)
                 .build();
     }
 
@@ -77,11 +97,11 @@ public class HomeServiceImpl implements HomeService {
                 .divide(total, 0, RM).intValue();
     }
 
-//    private int achievement(BigDecimal total, BigDecimal target) {
-//        if (target.compareTo(BigDecimal.ZERO) <= 0) return 0;
-//        return total.multiply(BigDecimal.valueOf(100))
-//                .divide(target, 0, RM).intValue();
-//    }
+    private int achievement(BigDecimal total, BigDecimal target) {
+        if (target.compareTo(BigDecimal.ZERO) <= 0) return 0;
+        return total.multiply(BigDecimal.valueOf(100))
+                .divide(target, 0, RM).intValue();
+    }
 
     private BigDecimal nvl(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;

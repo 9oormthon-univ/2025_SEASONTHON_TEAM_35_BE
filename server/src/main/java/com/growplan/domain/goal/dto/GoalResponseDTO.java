@@ -19,5 +19,6 @@ public class GoalResponseDTO {
         BigDecimal targetAmount; // 목표 금액
         BigDecimal emergencyFundAmount; // 비상금 마련 금액
         InvestmentPurpose investmentPurpose; // 투자 목적
+        int achievementRate; // 달성률
     }
 }

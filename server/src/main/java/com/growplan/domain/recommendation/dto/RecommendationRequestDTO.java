@@ -24,4 +24,14 @@ public class RecommendationRequestDTO {
         private InvestmentPurpose investmentPurpose; // 투자 목적
         private Boolean emergencyFund;
     }
+
+    @Getter
+    @Setter
+    public static class ExternalRecommendRequest {
+        private List<String> assets;
+        private int risk_level;
+        private int lookback_years;
+        private double rf;
+        private int points;
+    }
 }

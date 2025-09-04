@@ -19,7 +19,7 @@ public class HomeController {
     private final HomeService homeService;
 
     @GetMapping("/")
-    @Operation(summary = "홈 화면 API", description = "회원의 홈 화면 정보를 조회합니다.")
+    @Operation(summary = "홈 화면 API", description = "회원의 홈 화면 정보를 조회합니다. 예산 자산 수익률은 아직 구현이 안 됐습니다.")
     public ApiResponse<HomeResponseDTO.OverviewDTO> getHomeOverview(@CurrentMember Member member) {
 
         HomeResponseDTO.OverviewDTO response = homeService.getOverview(member);

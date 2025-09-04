@@ -31,7 +31,6 @@ public class AssetQueryServiceImpl implements AssetQueryService {
             EnumSet.of(AssetType.STOCK, AssetType.BITCOIN, AssetType.BOND, AssetType.ETF); // 투자 자산
 
     @Override
-    @Transactional(readOnly = true)
     public AssetResponseDTO.RegisterAssetResponseDTO getAssetSummary(Member member) {
 
         AssetConverter.AssetDummySpec spec = AssetConverter.dummySpec();

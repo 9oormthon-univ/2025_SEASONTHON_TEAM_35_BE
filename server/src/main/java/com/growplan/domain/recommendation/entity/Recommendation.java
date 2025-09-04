@@ -33,4 +33,11 @@ public class Recommendation extends BaseEntity {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "design_id", nullable = false)
     private InvestmentDesign design;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String efPayloadJson;      // FastAPI /recommend 결과 원본 JSON
+
+    private String assetsCsv;          // "SPY,QQQM,277630.KS,272910.KS,IMTB"
+    private String asOf;               // FastAPI가 내려준 기준일 (예: "2025-09-03")
 }

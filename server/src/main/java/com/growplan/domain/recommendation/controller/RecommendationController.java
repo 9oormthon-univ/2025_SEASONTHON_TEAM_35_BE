@@ -36,7 +36,7 @@ public class RecommendationController { // 자산 설계 및 분석
     }
 
     @GetMapping("/portfolio")
-    @Operation(summary = "AI 추천 자산 비율 API", description = "회원의 포트폴리오를 추천합니다.<br/> AI 자산 의견은 아직입니다! 완성될 시 말씀드리겠습니다.")
+    @Operation(summary = "AI 추천 자산 설계 API", description = "회원의 포트폴리오를 추천합니다.")
     public ApiResponse<RecommendationResponseDTO.AIPortfolioResponse> getAiRecommendedPortfolio(@CurrentMember Member member) {
 
         RecommendationResponseDTO.AIPortfolioResponse response = recommendationCommandService.getAiRecommendedPortfolio(member);
@@ -44,7 +44,7 @@ public class RecommendationController { // 자산 설계 및 분석
     }
 
     @GetMapping("/investment")
-    @Operation(summary = "회원 투자 설계 조회 API", description = "회원의 투자 설계 정보를 조회합니다.")
+    @Operation(summary = "AI 투자 분석 API", description = "회원의 투자 분석 정보를 조회합니다.")
     public ApiResponse<RecommendationResponseDTO.RecommendApiResult> getInvestmentDesign(@CurrentMember Member member) {
 
         var result = recommendationCommandService.getExternalInvestment(member);

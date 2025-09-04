@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum Propensity { // 투자 성향
 
     STABLE, // 안정형
-    ACTIVE, // 공격형
-    COMMON // 보통형
+    SAFETY, // 안전추구형
+    ACTIVE, // 위험중립형
+    AGGRESSIVE, // 적극투자형
+    AGGRESSIVE_INVESTMENT, // 공격투자형
 }

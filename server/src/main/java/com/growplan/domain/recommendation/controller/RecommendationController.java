@@ -43,4 +43,13 @@ public class RecommendationController { // 자산 설계 및 분석
         return ApiResponse.onSuccess(response);
     }
 
+    @GetMapping("/investment")
+    @Operation(summary = "회원 투자 설계 조회 API", description = "회원의 투자 설계 정보를 조회합니다.")
+    public ApiResponse<RecommendationResponseDTO.RecommendApiResult> getInvestmentDesign(@CurrentMember Member member) {
+
+        var result = recommendationCommandService.getExternalInvestment(member);
+        return ApiResponse.onSuccess(result);
+    }
+
+
 }

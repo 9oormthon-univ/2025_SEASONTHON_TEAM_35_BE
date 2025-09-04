@@ -39,8 +39,9 @@ public class MemberController {
 
     @GetMapping("/success")
     @Operation(summary = "백엔드 테스트용입니다", description = "로그인 테스트용입니다 연결 X")
-    public ApiResponse<MemberResponseDTO.LoginSuccessDTO> success(@RequestParam("access_token") String accessToken) {
-        return ApiResponse.onSuccess(MemberConverter.toLoginSuccessDTO(accessToken));
+    public ApiResponse<MemberResponseDTO.LoginSuccessDTO> success(@RequestParam("access_token") String accessToken,
+                                                                  @RequestParam(value = "name", required = false) String name) {
+        return ApiResponse.onSuccess(MemberConverter.toLoginSuccessDTO(accessToken, name));
     }
 
     @GetMapping("/me")

@@ -19,9 +19,10 @@ public class MemberConverter {
                 .build();
     }
 
-    public static MemberResponseDTO.LoginSuccessDTO toLoginSuccessDTO(String accessToken) {
+    public static MemberResponseDTO.LoginSuccessDTO toLoginSuccessDTO(String accessToken, String name) {
         return MemberResponseDTO.LoginSuccessDTO.builder()
                 .accessToken(accessToken)
+                .name(name)
                 .build();
     }
 

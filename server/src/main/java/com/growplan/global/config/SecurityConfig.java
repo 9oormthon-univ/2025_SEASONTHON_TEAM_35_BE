@@ -46,7 +46,6 @@ public class SecurityConfig {
             "/api/v0/auth/kakao",
             "/oauth2/**",
             "/api/v0/member/success",
-            "/localhost:8001"
     };
 
     @Bean

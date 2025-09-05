@@ -19,7 +19,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 @Service
-@Transactional(readOnly = true)
+@Transactional
 @RequiredArgsConstructor
 public class GoalCommandServiceImpl implements GoalCommandService {
 
@@ -36,13 +36,23 @@ public class GoalCommandServiceImpl implements GoalCommandService {
     @Override
     public GoalResponseDTO.GoalAnalysisResponseDTO analyzeGoal(Member member) {
 
-        InvestmentDesign design = investmentDesignRepository.findByMember(member)
-                .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+        InvestmentDesign design = investmentDesignRepository.findByMemberOrNull(member);
         AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
                 .orElseThrow(() -> new AssetException(ErrorStatus.ASSET_NOT_FOUND));
 
         BigDecimal totalAmount = portfolio.getTotalAmount() == null
                 ? BigDecimal.ZERO : portfolio.getTotalAmount();
+
+        if (design == null) return null;
+
+//        if (design == null) {
+//            return GoalConverter.toAnalysisResponse(
+//                    BigDecimal.ZERO,
+//                    BigDecimal.ZERO, 0, null, 0,
+//                    "투자 설계가 등록되어 있지 않습니다.",
+//                    0
+//            );
+//        }
 
         int monthlyIncomeMan = incomeRangeToMonthly(design.getIncomeRange());      // 만원/월
         int monthlySavingMan = savingRangeToMonthly(design.getSavingRange());     // 만원/월

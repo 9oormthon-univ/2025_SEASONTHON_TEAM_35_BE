@@ -60,15 +60,26 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
     private record TimelineSpec(String title, int pointCount, List<LabelAndYears> labels) {}
 
     @Override
-    @Transactional(readOnly = true)
     public RecommendationResponseDTO.AIPortfolioResponse getAiRecommendedPortfolio(Member member) {
 
-        InvestmentDesign design = investmentDesignRepository.findByMember(member)
-                .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+        InvestmentDesign design = investmentDesignRepository.findByMemberOrNull(member);
         AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
                 .orElseThrow(() -> new AssetException(ErrorStatus.ASSET_NOT_FOUND));
 
+        if (design == null) return null;
+
         BigDecimal totalAmount = portfolio.getTotalAmount() == null ? BigDecimal.ZERO : portfolio.getTotalAmount();
+
+//        if (design == null) {
+//            return toResponse(
+//                    totalAmount,
+//                    0.0, 0.0, 0.0, 0.0,
+//                    "투자 설계가 등록되어 있지 않습니다.",
+//                    null, // IncomeRange
+//                    null, // InvestmentPeriod
+//                    null  // Propensity
+//            );
+//        }
 
         int monthlyIncome = incomeRangeToMonthly(design.getIncomeRange());
 
@@ -113,8 +124,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
     @Override
     public RecommendationResponseDTO.RecommendApiResult getExternalInvestment(Member member) {
 
-        InvestmentDesign design = investmentDesignRepository.findByMember(member)
-                .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+        InvestmentDesign design = investmentDesignRepository.findByMemberOrNull(member);
         AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
                 .orElseThrow(() -> new AssetException(ErrorStatus.ASSET_NOT_FOUND));
         BigDecimal base = nvl(portfolio.getTotalAmount()).setScale(MONEY_SCALE, RM);

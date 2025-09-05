@@ -53,6 +53,20 @@ public class HomeServiceImpl implements HomeService {
 
 
         GoalResponseDTO.GoalAnalysisResponseDTO goal = goalCommandService.analyzeGoal(member);
+        if (goal == null) {
+            return HomeResponseDTO.OverviewDTO.builder()
+                    .name(safeName(member))
+                    .totalAsset(total)
+                    .cashRatio(cashRatio)
+                    .depositRatio(depositRatio)
+                    .savingRatio(savingRatio)
+                    .investRatio(investRatio)
+                    .etcRatio(etcRatio)
+                    .targetAmount(BigDecimal.ZERO)
+                    .achievementRate(0)
+                    .investmentForecast(null)
+                    .build();
+        }
         BigDecimal targetAmount = nvl(goal.getTargetAmount()).setScale(MONEY_SCALE, RM);
 
         int achievementRate = achievement(total, targetAmount);

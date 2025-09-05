@@ -9,4 +9,7 @@ import java.util.Optional;
 public interface InvestmentDesignRepository extends JpaRepository<InvestmentDesign, Long> {
 
     Optional<InvestmentDesign> findByMember(Member member);
+    default InvestmentDesign findByMemberOrNull(Member member) {
+        return findByMember(member).orElse(null);
+    }
 }

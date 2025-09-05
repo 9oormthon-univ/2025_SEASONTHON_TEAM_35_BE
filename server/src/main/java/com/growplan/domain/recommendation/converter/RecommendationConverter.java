@@ -55,7 +55,7 @@ public class RecommendationConverter {
                 .depositRatioPct(pct(depositRatio))
                 .savingsRatioPct(pct(savingsRatio))
                 .investmentRatioPct(pct(investmentRatio))
-                .recommendationMessage(recommendationMessage)    // TODO: AI 추천 메시지 추가 예정
+                .recommendationMessage(recommendationMessage)
                 .totalAmount(total)
                 .incomeRange(incomeRange)
                 .investmentPeriod(investmentPeriod)

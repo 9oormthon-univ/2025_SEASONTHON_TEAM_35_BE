@@ -112,7 +112,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
             cash /= sum; depositRatio /= sum; savingsRatio /= sum; investRatio /= sum;
         }
 
-        String recommendationMessage = "String";
+        String recommendationMessage = buildRecommendationMessage(design);
 
         // 금액 계산
 //        BigDecimal cashAmt = pctOf(totalAmount, cash);
@@ -496,6 +496,95 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 """.formatted(summary);
     }
 
+    private enum Horizon { SHORT, MEDIUM, LONG }
+
+    private static Horizon horizonOf(InvestmentPeriod p) {
+        if (p == null) return Horizon.SHORT;
+        return switch (p) {
+            case UNDER_6_MONTHS, UNDER_1_YEAR, UNDER_2_YEARS, UNDER_3_YEARS -> Horizon.SHORT;
+            case UNDER_5_YEARS -> Horizon.MEDIUM;
+            case UNDER_10_YEARS, OVER_10_YEARS -> Horizon.LONG;
+        };
+    }
+    private static boolean isConservative(Propensity p) {
+        return p == Propensity.STABLE || p == Propensity.SAFETY;
+    }
+    private static boolean isAggressive(Propensity p) {
+        return p == Propensity.AGGRESSIVE || p == Propensity.AGGRESSIVE_INVESTMENT;
+    }
+    private static boolean isBalanced(Propensity p) {
+        return p == Propensity.ACTIVE;
+    }
+
+    private String buildRecommendationMessage(InvestmentDesign d) {
+        Propensity p = d.getPropensity();
+        boolean needEF = Boolean.TRUE.equals(d.getEmergencyFund());
+        Horizon h = horizonOf(d.getInvestmentPeriod());
+
+        // 1) 안정적 + 비상금 필요 + 단기  (피그마 예시 문구)
+        if (isConservative(p) && needEF && h == Horizon.SHORT) {
+            return "안정적인 운용을 선호하시기 때문에 예금과 비상금 중심으로 추천드렸습니다. "
+                    + "급한 상황에서도 자산을 쉽게 사용할 수 있도록 유동성을 확보했어요. "
+                    + "목표 시점이 가까워 위험 자산 비중을 졸이고, 원금 보전에 유리한 구조로 설정했습니다.";
+        }
+
+        // 2) 안정적 + 비상금 필요 + 장기
+        if (isConservative(p) && needEF && h == Horizon.LONG) {
+            return "장기적인 안목으로 안정성을 추구하시는 성향에 맞춰, 비상금은 별도로 안전하게 확보하는 것을 추천합니다. "
+                    + "나머지 자금은 국채나 우량 채권 중심으로 꾸준히 운용하며, 정기적인 리밸런싱으로 변동성을 관리해 장기적인 자산 증식을 목표로 합니다.";
+        }
+
+        // 3) 공격적 + 비상금 필요 + 장기
+        if (isAggressive(p) && needEF && h == Horizon.LONG) {
+            return "높은 수익을 추구하시는 성향과 장기 목표를 고려하여 투자 자산 비중을 높게 설정했습니다. "
+                    + "다만, 최소한의 안전장치로 3~6개월치 비상금을 확보해 유동성 위험을 줄이는 것이 중요합니다. "
+                    + "이후 장기적인 분산투자와 리밸런싱으로 시장 하락 시 손실 위험을 관리하며 복리 효과를 극대화하는 전략을 추천합니다.";
+        }
+
+        // 4) 공격적 + 비상금 필요 + 단기
+        if (isAggressive(p) && needEF && h == Horizon.SHORT) {
+            return "공격적인 운용을 선호하시지만 목표 시점이 가까워 원금 보전을 우선했습니다. "
+                    + "갑작스러운 시장 하락에도 원금을 보호할 수 있도록 예금과 단기 채권 위주로 운용하도록 설정하였습니다.";
+        }
+
+        // 5) 위험중립 + 비상금 필요 + 단기
+        if (isBalanced(p) && needEF && h == Horizon.SHORT) {
+            return "단기 목표 달성을 위해 안정성을 높이는 방향으로 추천했습니다. "
+                    + "비상금을 통해 유동성을 확보하고, 자산의 대부분은 예금 및 단기 채권에 보관합니다. "
+                    + "소량의 우량 주식이나 배당주를 편입하여 안정적인 추가 수익을 추구하는 전략을 고려해볼 수 있습니다.";
+        }
+
+        // 6) 위험중립 + 비상금 필요 + 장기
+        if (isBalanced(p) && needEF && h == Horizon.LONG) {
+            return "위험중립 성향과 장기 목표의 균형을 맞추기 위해 '자산배분' 전략을 추천합니다. "
+                    + "주식과 채권의 비중을 균형 있게 배분하여 안정적인 성장을 추구합니다. "
+                    + "비상금은 별도로 유지하고, 꾸준한 분할 투자와 정기적인 리밸런싱으로 장기적인 수익성과 안정성을 함께 관리하는 것이 중요합니다.";
+        }
+
+        // 7) 안정적 + 비상금 없음 + 단기
+        if (isConservative(p) && !needEF && h == Horizon.SHORT) {
+            return "안정성을 선호하시지만 비상금이 없어 예상치 못한 지출에 취약할 수 있습니다. "
+                    + "투자에 앞서, 최소 3개월치 생활비를 언제든 사용할 수 있는 예금이나 파킹통장으로 먼저 마련하는 것을 강력히 권고합니다. "
+                    + "이후 단기 목표에 맞춰 안전자산 위주로 운용하는 것이 바람직합니다.";
+        }
+
+        // 8) 안정적 + 비상금 없음 + 장기
+        if (isConservative(p) && !needEF && h == Horizon.LONG) {
+            return "장기 투자 전에 비상금을 먼저 마련해 예기치 못한 지출에 대비하세요. "
+                    + "먼저 3~6개월치 생활비를 확보한 후, 장기적인 관점에서 채권과 예금 중심으로 투자를 시작하고 점진적으로 투자 자산을 늘려가는 전략을 추천합니다.";
+        }
+
+        // 9) 공격적 + 비상금 없음 + 장기
+        if (isAggressive(p) && !needEF && h == Horizon.LONG) {
+            return "공격적 성향이라도 비상금이 없으면 손절·중도해지 리스크가 커집니다. "
+                    + "먼저 3~6개월치 비상금을 안전하게 확보하세요. 그 후에 주식형 펀드나 ETF 중심으로 장기 분산 투자하여 기대수익률을 높이는 전략을 실행하는 것이 안전합니다.";
+        }
+
+        // 10) 그 외(기본 가이드)
+        return "목표 시점과 유동성 필요도를 고려해 비상금을 우선 확보하고, "
+                + "남는 자금은 성향에 맞춰 안전자산과 위험자산을 배분했습니다. "
+                + "분할투자와 정기 리밸런싱으로 변동성을 관리하는 전략을 권장합니다.";
+    }
 
     private static BigDecimal nvl(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
 }

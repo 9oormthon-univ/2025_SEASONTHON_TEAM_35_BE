@@ -44,14 +44,10 @@ public class MemberController {
         return ApiResponse.onSuccess(MemberConverter.toLoginSuccessDTO(accessToken, name));
     }
 
-    @GetMapping("/me")
-    @Operation(summary = "백엔드 테스트용입니다", description = "로그인 테스트용입니다 연결 X")
-    public Map<String, Object> me(@AuthenticationPrincipal PrincipalDetails principal) {
-        return Map.of(
-                "memberId", principal.getMember().getMemberId(),
-                "name", principal.getMember().getName(),
-                "email", principal.getMember().getEmail()
-        );
+    @GetMapping("/name")
+    @Operation(summary = "이름 반환 API", description = "이름 반환용입니다.")
+    public ApiResponse<MemberResponseDTO.getNameDTO> me(@CurrentMember Member member) {
+        return ApiResponse.onSuccess(MemberConverter.toNameDTO(member));
     }
 
     @GetMapping("/mypage")

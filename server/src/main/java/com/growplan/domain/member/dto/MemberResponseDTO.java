@@ -29,4 +29,13 @@ public class MemberResponseDTO {
         String email;
         BigDecimal totalAmount;
     }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class getNameDTO {
+
+        String name;
+    }
 }

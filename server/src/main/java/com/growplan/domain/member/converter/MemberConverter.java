@@ -34,4 +34,10 @@ public class MemberConverter {
                 .build();
     }
 
+    public static MemberResponseDTO.getNameDTO toNameDTO(Member member) {
+        return MemberResponseDTO.getNameDTO.builder()
+                .name(member.getName())
+                .build();
+    }
+
 }

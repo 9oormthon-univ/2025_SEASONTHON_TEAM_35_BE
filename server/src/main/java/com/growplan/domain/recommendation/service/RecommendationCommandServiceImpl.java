@@ -4,6 +4,8 @@ import com.growplan.domain.asset.entity.AssetPortfolio;
 import com.growplan.domain.asset.repository.AssetPortfolioRepository;
 import com.growplan.domain.member.entity.Member;
 import com.growplan.domain.recommendation.converter.RecommendationConverter;
+import com.growplan.domain.recommendation.dto.GeminiRequest;
+import com.growplan.domain.recommendation.dto.GeminiResponse;
 import com.growplan.domain.recommendation.dto.RecommendationRequestDTO;
 import com.growplan.domain.recommendation.dto.RecommendationResponseDTO;
 import com.growplan.domain.recommendation.entity.InvestmentDesign;
@@ -14,6 +16,7 @@ import com.growplan.global.error.code.status.ErrorStatus;
 import com.growplan.global.error.exception.handler.AssetException;
 import com.growplan.global.error.exception.handler.InvestmentDesignException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
@@ -39,13 +42,15 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 
     private static final RoundingMode RM = RoundingMode.HALF_UP;
     private static final int MONEY_SCALE = 0; // 만원 단위 반올림
-    private static final int PCT_SCALE = 1;   // 퍼센트 소수 1자리
     private static final double DEFAULT_CASH_RATIO = 0.10;
 
     private final InvestmentDesignRepository investmentDesignRepository;
     private final AssetPortfolioRepository assetPortfolioRepository;
-    private final WebClient recommendWebClient;
 
+    private final WebClient recommendWebClient;
+    private final WebClient geminiWebClient;
+    @Value("${gemini.model}")
+    private String geminiModel;
 
     @Override
     public void designInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request) {
@@ -188,8 +193,10 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
                     .build());
         }
 
+        String reason = generateReasonTextWithGemini(rec);
+
         rec.setEtfList(buildDummyAssetCards());
-        rec.setReasonText("String"); // TODO: AI 추천 메시지 추가 예정
+        rec.setReasonText(reason != null ? reason : "포트폴리오 지표를 기반으로 한 해설 생성에 일시적으로 실패했습니다.");
         rec.setHorizonTitle(spec.title());
         rec.setPointCount(spec.pointCount());
         rec.setCurrentAmount(base);
@@ -393,6 +400,102 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
                         .build()
         );
     }
+
+    // ----- Gemini 호출부 -----
+    private String generateReasonTextWithGemini(RecommendationResponseDTO.RecommendApiResult rec) {
+        String summary = buildSummary(rec);         // 예: 샘플 요약 문자열
+        String prompt  = buildPrompt(summary);      // 지시문 + summary
+
+        var req = GeminiRequest.builder()
+                .contents(java.util.List.of(
+                        GeminiRequest.Content.builder()
+                                .parts(java.util.List.of(
+                                        GeminiRequest.Part.builder()
+                                                .text(prompt)
+                                                .build()
+                                )).build()
+                ))
+                .build();
+
+        try {
+            var resp = geminiWebClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/models/" + geminiModel + ":generateContent")
+                            .build())
+                    .bodyValue(req)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, r -> r.bodyToMono(String.class)
+                            .flatMap(msg -> Mono.error(new IllegalStateException(
+                                    "[Gemini] HTTP " + r.statusCode().value() + " - " + msg))))
+                    .bodyToMono(GeminiResponse.class)
+                    .timeout(Duration.ofSeconds(12))
+                    .block();
+
+            if (resp == null || resp.getCandidates() == null || resp.getCandidates().isEmpty()) {
+                return null;
+            }
+            var cand = resp.getCandidates().get(0);
+            if (cand.getContent() == null || cand.getContent().getParts() == null || cand.getContent().getParts().isEmpty()) {
+                return null;
+            }
+            return cand.getContent().getParts().get(0).getText();
+        } catch (Exception e) {
+            // 필요 시 로깅
+            return null;
+        }
+    }
+
+    // ----- 요약 생성: 외부 응답 → 사람이 읽기 쉬운 summary 텍스트 -----
+    private String buildSummary(RecommendationResponseDTO.RecommendApiResult r) {
+        java.text.DecimalFormat pct2 = new java.text.DecimalFormat("0.00");
+
+        String annualRet = pct2.format(r.getAnnual_return() * 100.0) + "%";
+        String annualVol = pct2.format(r.getAnnual_vol() * 100.0) + "%";
+        String sharpe    = pct2.format(r.getSharpe());
+        String mdd       = pct2.format(r.getMax_drawdown() * 100.0) + "%";
+
+        // weights 상위 3
+        var top = r.getWeights() == null ? java.util.List.<java.util.Map.Entry<String, Double>>of()
+                : r.getWeights().entrySet().stream()
+                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                .limit(3)
+                .toList();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("- 예상 연수익률: ").append(annualRet).append("\n")
+                .append("- 예상 연변동성: ").append(annualVol).append("\n")
+                .append("- 샤프지수(무위험 0.00%): ").append(sharpe).append("\n")
+                .append("- 과거 구간 기준 최대낙폭: ").append(mdd).append("\n")
+                .append("- 비중 상위:\n");
+
+        for (var e : top) {
+            sb.append("  · ").append(e.getKey()).append(": ")
+                    .append(pct2.format(e.getValue() * 100.0)).append("%\n");
+        }
+        return sb.toString();
+    }
+
+    // ----- 프롬프트 생성: (PM님이 준 파이썬 예시를 Java 문자열로) -----
+    private String buildPrompt(String summary) {
+        return """
+역할: 당신은 초보 투자자에게 포트폴리오 지표를 쉽고 차분하게 설명하는 해설가다.
+스타일: 쉬운 한국어, 짧은 문장, 함축적인 문장, 포트폴리오의 성향 및 위험도 평가.
+
+사전지식 :
+- QQQM : Invesco NASDAQ 100 ETF
+- 277630.KS : TIGER KOSPI ETF
+- 272910.KS : Kim Korea index Active Korea Treasury and agency Bonds Etf
+- SPY : SPDR S&P 500 Trust ETF
+- IMTB : iShares Core 5 10 Year USD Bond ETF
+
+데이터:
+%s
+
+예시:  "이 포트폴리오는 고수익을 추구하면서도 위험을 관리할 수 있도록 구성되었습니다. 특히, 기술주 중심의 미국 시장과 배당 성장형 국내 시장을 혼합하여 위험을 분산하고, 수익률을 끌어올리는 전략을 사용했습니다."
+요청:  "예시처럼 해당 데이터 포트폴리오의 성향 및 위험도 분석 및 평가. 제공한 데이터를 다시 나열하지 금지. 자기소개 및 인사말 금지. 평가에 대한 결론만 작성. 오직 포트폴리오에 대한 평가만 작성"
+""".formatted(summary);
+    }
+
 
     private static BigDecimal nvl(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }
 }

@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
@@ -32,6 +33,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static com.growplan.domain.recommendation.converter.RecommendationConverter.toResponse;
 import static java.lang.Math.pow;
@@ -64,44 +66,129 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         investmentDesignRepository.save(design);
     }
 
+//    @Override
+//    public void updateDesignInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request) {
+//
+//        // 1) 기존 설계 조회 (없으면 404 성격의 도메인 예외)
+//        InvestmentDesign design = investmentDesignRepository.findByMember(member)
+//                .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+//
+//        // 2) 부분 갱신: null 이 아닌 값만 반영
+//        if (request.getSavingRange() != null) {
+//            design.setSavingRange(request.getSavingRange());
+//        }
+//        if (request.getIncomeRange() != null) {
+//            design.setIncomeRange(request.getIncomeRange());
+//        }
+//        if (request.getProfitRange() != null) {
+//            design.setProfitRange(request.getProfitRange());
+//        }
+//        if (request.getInvestmentPeriod() != null) {
+//            design.setInvestmentPeriod(request.getInvestmentPeriod());
+//        }
+//        if (request.getPropensity() != null) {
+//            design.setPropensity(request.getPropensity());
+//        }
+//        if (request.getInvestmentPurpose() != null) {
+//            design.setInvestmentPurpose(request.getInvestmentPurpose());
+//        }
+//        if (request.getEmergencyFund() != null) {
+//            design.setEmergencyFund(request.getEmergencyFund());
+//        }
+//
+//        // 방어적: 주인(member) 보정
+//        if (design.getMember() == null) {
+//            design.setMember(member);
+//        }
+//
+//        // 3) 저장 (명시적 save; @Transactional + Dirty Checking 으로도 반영됨)
+//        investmentDesignRepository.save(design);
+//    }
+
     @Override
     public void updateDesignInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request) {
 
-        // 1) 기존 설계 조회 (없으면 404 성격의 도메인 예외)
+        // 0) 진입/트랜잭션/요청 프리뷰
+        // TODO: member id getter 이름 맞춰 사용 (getId or getMemberId)
+        Long memberIdSafe = null;
+        try { memberIdSafe = (Long) member.getClass().getMethod("getMemberId").invoke(member); } catch (Exception ignore) {}
+        log.info("[UpdateDesign] >>> start memberId={} (PUT /design)", memberIdSafe);
+        log.info("[UpdateDesign] TX active={}, readOnly={}",
+                TransactionSynchronizationManager.isActualTransactionActive(),
+                TransactionSynchronizationManager.isCurrentTransactionReadOnly());
+        log.debug("[UpdateDesign] req={}", preview(toJsonSafe(request)));
+
+        // 1) 기존 설계 조회
         InvestmentDesign design = investmentDesignRepository.findByMember(member)
                 .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+        log.info("[UpdateDesign] loaded designId={}", design.getInvestmentDesignId());
+        log.debug("[UpdateDesign/before] savingRange={}, incomeRange={}, profitRange={}, period={}, propensity={}, purpose={}, emergencyFund={}",
+                design.getSavingRange(), design.getIncomeRange(), design.getProfitRange(),
+                design.getInvestmentPeriod(), design.getPropensity(), design.getInvestmentPurpose(), design.getEmergencyFund());
 
-        // 2) 부분 갱신: null 이 아닌 값만 반영
+        // 2) 부분 갱신: null 이 아닌 값만 반영 + 변경 여부 로깅
+        boolean changedAny = false;
+
         if (request.getSavingRange() != null) {
+            boolean changed = !Objects.equals(design.getSavingRange(), request.getSavingRange());
+            log.info("[UpdateDesign] savingRange: {} -> {} (changed={})", design.getSavingRange(), request.getSavingRange(), changed);
+            if (changed) changedAny = true;
             design.setSavingRange(request.getSavingRange());
         }
         if (request.getIncomeRange() != null) {
+            boolean changed = !Objects.equals(design.getIncomeRange(), request.getIncomeRange());
+            log.info("[UpdateDesign] incomeRange: {} -> {} (changed={})", design.getIncomeRange(), request.getIncomeRange(), changed);
+            if (changed) changedAny = true;
             design.setIncomeRange(request.getIncomeRange());
         }
         if (request.getProfitRange() != null) {
+            boolean changed = !Objects.equals(design.getProfitRange(), request.getProfitRange());
+            log.info("[UpdateDesign] profitRange: {} -> {} (changed={})", design.getProfitRange(), request.getProfitRange(), changed);
+            if (changed) changedAny = true;
             design.setProfitRange(request.getProfitRange());
         }
         if (request.getInvestmentPeriod() != null) {
+            boolean changed = !Objects.equals(design.getInvestmentPeriod(), request.getInvestmentPeriod());
+            log.info("[UpdateDesign] investmentPeriod: {} -> {} (changed={})", design.getInvestmentPeriod(), request.getInvestmentPeriod(), changed);
+            if (changed) changedAny = true;
             design.setInvestmentPeriod(request.getInvestmentPeriod());
         }
         if (request.getPropensity() != null) {
+            boolean changed = !Objects.equals(design.getPropensity(), request.getPropensity());
+            log.info("[UpdateDesign] propensity: {} -> {} (changed={})", design.getPropensity(), request.getPropensity(), changed);
+            if (changed) changedAny = true;
             design.setPropensity(request.getPropensity());
         }
         if (request.getInvestmentPurpose() != null) {
+            boolean changed = !Objects.equals(design.getInvestmentPurpose(), request.getInvestmentPurpose());
+            log.info("[UpdateDesign] investmentPurpose: {} -> {} (changed={})", design.getInvestmentPurpose(), request.getInvestmentPurpose(), changed);
+            if (changed) changedAny = true;
             design.setInvestmentPurpose(request.getInvestmentPurpose());
         }
         if (request.getEmergencyFund() != null) {
+            boolean changed = !Objects.equals(design.getEmergencyFund(), request.getEmergencyFund());
+            log.info("[UpdateDesign] emergencyFund: {} -> {} (changed={})", design.getEmergencyFund(), request.getEmergencyFund(), changed);
+            if (changed) changedAny = true;
             design.setEmergencyFund(request.getEmergencyFund());
         }
 
-        // 방어적: 주인(member) 보정
+        // 방어적 보정 로그
         if (design.getMember() == null) {
+            log.warn("[UpdateDesign] design.member is null. assigning member from request.");
             design.setMember(member);
+            changedAny = true;
         }
 
-        // 3) 저장 (명시적 save; @Transactional + Dirty Checking 으로도 반영됨)
+        // 3) 저장 (Dirty Checking + save 호출 그대로 유지)
         investmentDesignRepository.save(design);
+
+        log.debug("[UpdateDesign/after] savingRange={}, incomeRange={}, profitRange={}, period={}, propensity={}, purpose={}, emergencyFund={}",
+                design.getSavingRange(), design.getIncomeRange(), design.getProfitRange(),
+                design.getInvestmentPeriod(), design.getPropensity(), design.getInvestmentPurpose(), design.getEmergencyFund());
+
+        log.info("[UpdateDesign] <<< saved designId={} (changedAny={})", design.getInvestmentDesignId(), changedAny);
     }
+
 
     private record LabelAndYears(String label, double years) {}
     private record TimelineSpec(String title, int pointCount, List<LabelAndYears> labels) {}

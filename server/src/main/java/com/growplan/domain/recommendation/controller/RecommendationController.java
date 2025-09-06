@@ -51,5 +51,11 @@ public class RecommendationController { // 자산 설계 및 분석
         return ApiResponse.onSuccess(result);
     }
 
-
+    @PostMapping("/design/update")
+    @Operation(summary = "투자 설계 수정 API", description = "회원의 투자 설계를 수정합니다.")
+    public ApiResponse<Void> updateInvestment(@CurrentMember Member member,
+                                              @RequestBody @Valid RecommendationRequestDTO.InvestmentDesignRequest request) {
+        recommendationCommandService.updateDesignInvestmentPlan(member, request);
+        return ApiResponse.onSuccess(null);
+    }
 }

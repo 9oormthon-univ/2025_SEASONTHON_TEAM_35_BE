@@ -7,6 +7,7 @@ import com.growplan.domain.recommendation.dto.RecommendationResponseDTO;
 public interface RecommendationCommandService {
 
     void designInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request);
+    void updateDesignInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request);
     RecommendationResponseDTO.AIPortfolioResponse getAiRecommendedPortfolio(Member member);
     RecommendationResponseDTO.RecommendApiResult getExternalInvestment(Member member);
 }

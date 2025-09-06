@@ -63,6 +63,45 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         investmentDesignRepository.save(design);
     }
 
+    @Override
+    public void updateDesignInvestmentPlan(Member member, RecommendationRequestDTO.InvestmentDesignRequest request) {
+
+        // 1) 기존 설계 조회 (없으면 404 성격의 도메인 예외)
+        InvestmentDesign design = investmentDesignRepository.findByMember(member)
+                .orElseThrow(() -> new InvestmentDesignException(ErrorStatus.INVESTMENT_DESIGN_NOT_FOUND));
+
+        // 2) 부분 갱신: null 이 아닌 값만 반영
+        if (request.getSavingRange() != null) {
+            design.setSavingRange(request.getSavingRange());
+        }
+        if (request.getIncomeRange() != null) {
+            design.setIncomeRange(request.getIncomeRange());
+        }
+        if (request.getProfitRange() != null) {
+            design.setProfitRange(request.getProfitRange());
+        }
+        if (request.getInvestmentPeriod() != null) {
+            design.setInvestmentPeriod(request.getInvestmentPeriod());
+        }
+        if (request.getPropensity() != null) {
+            design.setPropensity(request.getPropensity());
+        }
+        if (request.getInvestmentPurpose() != null) {
+            design.setInvestmentPurpose(request.getInvestmentPurpose());
+        }
+        if (request.getEmergencyFund() != null) {
+            design.setEmergencyFund(request.getEmergencyFund());
+        }
+
+        // 방어적: 주인(member) 보정
+        if (design.getMember() == null) {
+            design.setMember(member);
+        }
+
+        // 3) 저장 (명시적 save; @Transactional + Dirty Checking 으로도 반영됨)
+        investmentDesignRepository.save(design);
+    }
+
     private record LabelAndYears(String label, double years) {}
     private record TimelineSpec(String title, int pointCount, List<LabelAndYears> labels) {}
 

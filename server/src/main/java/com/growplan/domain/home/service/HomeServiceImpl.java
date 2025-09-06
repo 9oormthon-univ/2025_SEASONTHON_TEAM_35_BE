@@ -78,6 +78,7 @@ public class HomeServiceImpl implements HomeService {
 
             if (rec != null) {
                 forecastDto = HomeResponseDTO.InvestmentForecastDTO.builder()
+                        .annualReturn(rec.getAnnual_return())
                         .horizonTitle(rec.getHorizonTitle())
                         .pointCount(rec.getPointCount())
                         .currentAmount(rec.getCurrentAmount())

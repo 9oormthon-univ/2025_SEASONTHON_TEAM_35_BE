@@ -40,6 +40,8 @@ public class HomeResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class InvestmentForecastDTO {
+
+        private double annualReturn;
         private String horizonTitle;   // "3년" 등
         private Integer pointCount;    // 3/4/6
         private BigDecimal currentAmount; // 현재 총자산

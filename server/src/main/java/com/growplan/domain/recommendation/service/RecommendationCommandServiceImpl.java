@@ -214,7 +214,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 
         // 파이썬 로직
         double cash = DEFAULT_CASH_RATIO;
-        double[] safeInvest = safeInvestSplit(totalScore); // [safe, invest]
+        double[] safeInvest = safeInvestSplit(totalScore);
         double residual = Math.max(0.0, 1.0 - cash);
         double safeRatio = residual * safeInvest[0];
         double investRatio = residual * safeInvest[1];

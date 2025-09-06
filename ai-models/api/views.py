@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 # 실제 사용하는 파일명에 맞춰 수정하세요: .portfolio / .portfolio1 / .portfolio2
 from .portfolio import PortfolioRecommender
+from .load_current_price import load_current_price
 
 CSV_PATH = os.path.join(os.path.dirname(__file__), "prices_3y.csv")
 
@@ -91,7 +92,15 @@ def price_change(request):
         return JsonResponse({"changes": {k: float(v) for k, v in changes.items()}})
     except Exception as e:
         return HttpResponseBadRequest(JsonResponse({"error": str(e)}).content)
-
+    
+@csrf_exempt
+@require_POST
+def load_current_price_view(request):
+    try:
+        load_current_price()  # CSV 생성만 수행
+        return HttpResponse(status=204)  # 본문 없이 성공
+    except Exception as e:
+        return HttpResponseBadRequest(str(e))
 
 @csrf_exempt
 @require_GET

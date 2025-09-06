@@ -42,6 +42,7 @@ import static java.lang.Math.pow;
 @Slf4j
 public class RecommendationCommandServiceImpl implements RecommendationCommandService {
 
+    private static final int PROMPT_LOG_LIMIT = 700;
     private static final RoundingMode RM = RoundingMode.HALF_UP;
     private static final int MONEY_SCALE = 0; // 만원 단위 반올림
     private static final double DEFAULT_CASH_RATIO = 0.10;
@@ -451,7 +452,8 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
                             .flatMap(msg -> Mono.error(new IllegalStateException("[Gemini] HTTP "
                                     + r.statusCode().value() + " - " + msg))))
                     .bodyToMono(GeminiResponse.class)
-                    .timeout(Duration.ofSeconds(12))
+                    .doOnSubscribe(s -> log.info("[Gemini/Alloc] calling Gemini..."))
+                    .timeout(Duration.ofSeconds(1200))
                     .block();
 
             if (resp == null || resp.getCandidates() == null || resp.getCandidates().isEmpty()) return null;
@@ -524,9 +526,58 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 
 
     // ----- Gemini 호출부 -----
+//    private String generateReasonTextWithGemini(RecommendationResponseDTO.RecommendApiResult rec) {
+//        String summary = buildSummary(rec);         // 예: 샘플 요약 문자열
+//        String prompt  = buildPrompt(summary);      // 지시문 + summary
+//
+//        var req = GeminiRequest.builder()
+//                .contents(java.util.List.of(
+//                        GeminiRequest.Content.builder()
+//                                .parts(java.util.List.of(
+//                                        GeminiRequest.Part.builder()
+//                                                .text(prompt)
+//                                                .build()
+//                                )).build()
+//                ))
+//                .build();
+//
+//        try {
+//            var resp = geminiWebClient.post()
+//                    .uri(uriBuilder -> uriBuilder
+//                            .path("/models/" + geminiModel + ":generateContent")
+//                            .build())
+//                    .bodyValue(req)
+//                    .retrieve()
+//                    .onStatus(HttpStatusCode::isError, r -> r.bodyToMono(String.class)
+//                            .flatMap(msg -> Mono.error(new IllegalStateException(
+//                                    "[Gemini] HTTP " + r.statusCode().value() + " - " + msg))))
+//                    .bodyToMono(GeminiResponse.class)
+//                    .timeout(Duration.ofSeconds(120000))
+//                    .block();
+//
+//            if (resp == null || resp.getCandidates() == null || resp.getCandidates().isEmpty()) {
+//                return null;
+//            }
+//            var cand = resp.getCandidates().get(0);
+//            if (cand.getContent() == null || cand.getContent().getParts() == null || cand.getContent().getParts().isEmpty()) {
+//                return null;
+//            }
+//            return cand.getContent().getParts().get(0).getText();
+//        } catch (Exception e) {
+//            // 필요 시 로깅
+//            return null;
+//        }
+//    }
+
+
     private String generateReasonTextWithGemini(RecommendationResponseDTO.RecommendApiResult rec) {
-        String summary = buildSummary(rec);         // 예: 샘플 요약 문자열
-        String prompt  = buildPrompt(summary);      // 지시문 + summary
+        String summary = buildSummary(rec);
+        String prompt  = buildPrompt(summary);
+
+        // 🔎 로그: 입력 요약/프롬프트 프리뷰
+        log.info("[Gemini/Metrics] model={}", geminiModel);
+        log.debug("[Gemini/Metrics] summary preview: {}", preview(summary));
+        log.debug("[Gemini/Metrics] prompt preview: {}", preview(prompt));
 
         var req = GeminiRequest.builder()
                 .contents(java.util.List.of(
@@ -540,31 +591,81 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
                 .build();
 
         try {
-            var resp = geminiWebClient.post()
+            long t0 = System.currentTimeMillis();
+
+            GeminiResponse resp = geminiWebClient.post()
                     .uri(uriBuilder -> uriBuilder
                             .path("/models/" + geminiModel + ":generateContent")
                             .build())
                     .bodyValue(req)
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, r -> r.bodyToMono(String.class)
-                            .flatMap(msg -> Mono.error(new IllegalStateException(
-                                    "[Gemini] HTTP " + r.statusCode().value() + " - " + msg))))
+                            .flatMap(body -> {
+                                log.error("[Gemini/Metrics] HTTP error {} - body={}", r.statusCode().value(), body);
+                                return Mono.error(new IllegalStateException("[Gemini] HTTP "
+                                        + r.statusCode().value() + " - " + body));
+                            }))
                     .bodyToMono(GeminiResponse.class)
-                    .timeout(Duration.ofSeconds(120000))
+                    .doOnSubscribe(s -> log.info("[Gemini/Metrics] calling Gemini..."))
+                    .doOnNext(r -> {
+                        int candSize = (r.getCandidates() == null) ? 0 : r.getCandidates().size();
+                        log.info("[Gemini/Metrics] response received. candidates={}", candSize);
+//                        if (r.getPromptFeedback() != null) {
+//                            log.debug("[Gemini/Metrics] promptFeedback={}", toJsonSafe(r.getPromptFeedback()));
+//                        }
+                    })
+                    .timeout(Duration.ofSeconds(30)) // 필요 시 조정
                     .block();
 
-            if (resp == null || resp.getCandidates() == null || resp.getCandidates().isEmpty()) {
+            long took = System.currentTimeMillis() - t0;
+            log.info("[Gemini/Metrics] done in {} ms", took);
+
+            if (resp == null) {
+                log.warn("[Gemini/Metrics] response is NULL");
+                return null;
+            }
+            if (resp.getCandidates() == null || resp.getCandidates().isEmpty()) {
+                log.warn("[Gemini/Metrics] no candidates. fullResp={}", toJsonSafe(resp));
                 return null;
             }
             var cand = resp.getCandidates().get(0);
             if (cand.getContent() == null || cand.getContent().getParts() == null || cand.getContent().getParts().isEmpty()) {
+                log.warn("[Gemini/Metrics] candidate has no content/parts. candidate={}", toJsonSafe(cand));
                 return null;
             }
-            return cand.getContent().getParts().get(0).getText();
+            String text = cand.getContent().getParts().get(0).getText();
+            log.debug("[Gemini/Metrics] text preview: {}", preview(text));
+            return text;
+
+        } catch (org.springframework.web.reactive.function.client.WebClientResponseException e) {
+            log.error("[Gemini/Metrics] WebClientResponseException status={} body={}",
+                    e.getRawStatusCode(), e.getResponseBodyAsString(), e);
+            return null;
         } catch (Exception e) {
-            // 필요 시 로깅
+            log.error("[Gemini/Metrics] call failed", e);
             return null;
         }
+    }
+
+    // 객체 → JSON 안전 직렬화 (로깅용)
+    private static String toJsonSafe(Object o) {
+        if (o == null) return "null";
+        try {
+            // com.fasterxml.jackson.databind.ObjectMapper 프로젝트에 이미 있음
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(o);
+        } catch (Exception e) {
+            return String.valueOf(o);
+        }
+    }
+
+    // 긴 텍스트 프리뷰 로깅용
+    private static String preview(String s) {
+        if (s == null) return "null";
+        String flat = s.replaceAll("\\s+", " ").trim();
+        if (flat.length() > PROMPT_LOG_LIMIT) {
+            return flat.substring(0, PROMPT_LOG_LIMIT) + "...(" + flat.length() + " chars)";
+        }
+        return flat;
     }
 
     // ----- 요약 생성: 외부 응답 → 사람이 읽기 쉬운 summary 텍스트 -----

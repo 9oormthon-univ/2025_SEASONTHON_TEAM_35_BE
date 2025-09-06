@@ -7,6 +7,7 @@ import com.growplan.domain.recommendation.entity.InvestmentDesign;
 import com.growplan.global.common.enums.IncomeRange;
 import com.growplan.global.common.enums.InvestmentPeriod;
 import com.growplan.global.common.enums.Propensity;
+import com.growplan.global.common.enums.SavingRange;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,7 +36,7 @@ public class RecommendationConverter {
             BigDecimal totalAmount,
             double cashRatio, double depositRatio, double savingsRatio, double investmentRatio,
             String recommendationMessage,
-            IncomeRange incomeRange,
+            SavingRange savingRange,
             InvestmentPeriod investmentPeriod,
             Propensity propensity
     ) {
@@ -57,7 +58,7 @@ public class RecommendationConverter {
                 .investmentRatioPct(pct(investmentRatio))
                 .recommendationMessage(recommendationMessage)
                 .totalAmount(total)
-                .incomeRange(incomeRange)
+                .savingRange(savingRange)
                 .investmentPeriod(investmentPeriod)
                 .propensity(propensity)
                 .build();

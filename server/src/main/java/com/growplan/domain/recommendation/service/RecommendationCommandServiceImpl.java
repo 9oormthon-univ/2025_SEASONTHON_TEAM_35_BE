@@ -121,7 +121,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 //        BigDecimal invAmt  = pctOf(totalAmount, investRatio);
 
         return toResponse(totalAmount, cash, depositRatio, savingsRatio, investRatio, recommendationMessage,
-                design.getIncomeRange(),
+                design.getSavingRange(),
                 design.getInvestmentPeriod(),
                 design.getPropensity());
     }

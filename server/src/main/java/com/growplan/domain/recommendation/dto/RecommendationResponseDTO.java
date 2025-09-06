@@ -30,7 +30,7 @@ public class RecommendationResponseDTO {
         private String recommendationMessage;
 
         private BigDecimal totalAmount;
-        private IncomeRange incomeRange;
+        private SavingRange savingRange;
         private InvestmentPeriod investmentPeriod;
         private Propensity propensity;
     }

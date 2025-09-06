@@ -16,6 +16,7 @@ import com.growplan.global.error.code.status.ErrorStatus;
 import com.growplan.global.error.exception.handler.AssetException;
 import com.growplan.global.error.exception.handler.InvestmentDesignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -38,6 +39,7 @@ import static java.lang.Math.pow;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class RecommendationCommandServiceImpl implements RecommendationCommandService {
 
     private static final RoundingMode RM = RoundingMode.HALF_UP;
@@ -75,17 +77,6 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 
         BigDecimal totalAmount = portfolio.getTotalAmount() == null ? BigDecimal.ZERO : portfolio.getTotalAmount();
 
-//        if (design == null) {
-//            return toResponse(
-//                    totalAmount,
-//                    0.0, 0.0, 0.0, 0.0,
-//                    "투자 설계가 등록되어 있지 않습니다.",
-//                    null, // IncomeRange
-//                    null, // InvestmentPeriod
-//                    null  // Propensity
-//            );
-//        }
-
         int monthlyIncome = incomeRangeToMonthly(design.getIncomeRange());
 
         // 총점(성향/기간/목적/목표수익률-대응) → 안전/투자 큰 비율
@@ -112,7 +103,14 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
             cash /= sum; depositRatio /= sum; savingsRatio /= sum; investRatio /= sum;
         }
 
-        String recommendationMessage = buildRecommendationMessage(design);
+        String recommendationMessage =
+                generateAllocationMessageWithGemini(totalAmount, design, cash, depositRatio, savingsRatio, investRatio);
+       log.info("💡 [Gemini] 분배 비율 해설: {}", recommendationMessage);
+//        if (recommendationMessage == null || recommendationMessage.isBlank()) {
+//            recommendationMessage = buildRecommendationMessage(design); // 폴백
+//        }
+
+//        String recommendationMessage = buildRecommendationMessage(design);
 
         // 금액 계산
 //        BigDecimal cashAmt = pctOf(totalAmount, cash);
@@ -127,7 +125,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
     }
 
     @Override
-    public RecommendationResponseDTO.RecommendApiResult getExternalInvestment(Member member) {
+    public RecommendationResponseDTO.RecommendApiResult getExternalInvestment(Member member)    {
 
         InvestmentDesign design = investmentDesignRepository.findByMemberOrNull(member);
         AssetPortfolio portfolio = assetPortfolioRepository.findByMember(member)
@@ -173,7 +171,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
                                         reactor.core.publisher.Mono.error(new IllegalStateException(
                                                 "Recommend API error: HTTP " + resp.statusCode().value() + " - " + msg))))
                         .bodyToMono(RecommendationResponseDTO.RecommendApiResult.class)
-                        .timeout(Duration.ofSeconds(10))
+                        .timeout(Duration.ofSeconds(100000))
                         .block();
         if (rec == null) throw new IllegalStateException("Recommend API returned null");
 
@@ -206,13 +204,6 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         return rec;
     }
 
-//    private static BigDecimal pctOf(BigDecimal total, double ratio01) {
-//        return total.multiply(BigDecimal.valueOf(ratio01))
-//                .setScale(MONEY_SCALE, RM);
-//    }
-//    private static BigDecimal toPct(double ratio01) {
-//        return BigDecimal.valueOf(ratio01 * 100.0).setScale(PCT_SCALE, RM);
-//    }
 
     private static int scoreByPropensity(Propensity p) {
         if (p == null) return 0;
@@ -287,12 +278,6 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         return new double[]{ safeRatio * depositShare, safeRatio * savingsShare };
     }
 
-    private static int calcEmergencyFund(int income) {
-        if (income <= 200) return 500;
-        if (income <= 300) return 800;
-        if (income <= 500) return 1500;
-        return 3000;
-    }
 
     private static int incomeRangeToMonthly(IncomeRange r) {
         if (r == null) return 0;
@@ -401,6 +386,104 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         );
     }
 
+    // ===== 분배 비율 설명을 Gemini로 생성 =====
+    private String generateAllocationMessageWithGemini(
+            BigDecimal totalAmount,
+            InvestmentDesign d,
+            double cashRatio, double depositRatio, double savingsRatio, double investRatio
+    ) {
+        String summary = buildAllocationSummary(totalAmount, d, cashRatio, depositRatio, savingsRatio, investRatio);
+        String prompt  = buildAllocationPrompt(summary);
+
+        var req = GeminiRequest.builder()
+                .contents(List.of(
+                        GeminiRequest.Content.builder()
+                                .parts(List.of(GeminiRequest.Part.builder().text(prompt).build()))
+                                .build()
+                ))
+                .build();
+
+        try {
+            var resp = geminiWebClient.post()
+                    .uri(uriBuilder -> uriBuilder.path("/models/" + geminiModel + ":generateContent").build())
+                    .bodyValue(req)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, r -> r.bodyToMono(String.class)
+                            .flatMap(msg -> Mono.error(new IllegalStateException("[Gemini] HTTP "
+                                    + r.statusCode().value() + " - " + msg))))
+                    .bodyToMono(GeminiResponse.class)
+                    .timeout(Duration.ofSeconds(12))
+                    .block();
+
+            if (resp == null || resp.getCandidates() == null || resp.getCandidates().isEmpty()) return null;
+            var cand = resp.getCandidates().get(0);
+            if (cand.getContent() == null || cand.getContent().getParts() == null || cand.getContent().getParts().isEmpty()) return null;
+
+            return cand.getContent().getParts().get(0).getText();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ===== 요약 문자열 생성 =====
+    private String buildAllocationSummary(
+            BigDecimal totalAmount,
+            InvestmentDesign d,
+            double cashR, double depR, double savR, double invR
+    ) {
+        var pct0 = new java.text.DecimalFormat("0");  // 정수 %
+        String totalStr = formatMoney(totalAmount);
+
+        String incomeStr   = toKoIncomeRange(d.getIncomeRange());      // 예: "200~300만원"
+        String savingStr   = toKoSavingRange(d.getSavingRange());      // 예: "50~100만원"
+        String targetStr   = toKoProfitRange(d.getProfitRange());      // 예: "10~15%"
+        String periodStr   = toKoPeriod(d.getInvestmentPeriod());      // 예: "2년 이내"
+        String propStr     = toKoPropensity(d.getPropensity());        // 예: "안정형"
+        String purposeStr  = toKoPurpose(d.getInvestmentPurpose());    // 예: "저축"
+        String efStr       = Boolean.TRUE.equals(d.getEmergencyFund()) ? "필요" : "불필요";
+
+        String ratios = "추천 비율(%)  현금: " + pct0.format(cashR * 100)
+                + "% / 예금: " + pct0.format(depR * 100)
+                + "% / 적금: " + pct0.format(savR * 100)
+                + "% / 투자: " + pct0.format(invR * 100);
+
+        return """
+[개인 정보]
+총 자산 : %s
+월 소득 : %s
+월 저축 금액 : %s
+목표 수익률 : %s
+목표 시점 : %s
+투자 성향 : %s
+투자 목표 : %s
+비상금 : %s
+
+[자산 분배 비율]
+%s
+""".formatted(totalStr, incomeStr, savingStr, targetStr, periodStr, propStr, purposeStr, efStr, ratios);
+    }
+
+    // ===== 프롬프트(예시 톤 그대로) =====
+    private String buildAllocationPrompt(String summary) {
+        return """
+역할: 당신은 초보 투자자에게 자산 분배 비율을 쉽고 차분하게 설명하는 해설가다.
+스타일: 쉬운 한국어, 짧은 문장, 함축적인 문장, 포트폴리오의 성향 및 위험도 평가.
+
+데이터:
+%s
+
+예시:  "
+총 자산 5000만원, 월 저축 70만원으로 5년 뒤 10%% 수익을 목표하시는군요. 투자 성향은 안정형, 투자 목표는 저축입니다. 이 목표에 맞춰 자산 분배 비율을 설명해 드리겠습니다.
+총 자산 5000만원 중 현금은 10%%인 500만원을 추천합니다. 안정형 투자자에게는 갑작스러운 지출에 대비할 수 있는 여유 자금이 중요하기 때문입니다.
+예금은 38%%인 1900만원을 배정했습니다. 목표 금액 달성을 위해 원금 손실 위험 없이 안정적인 이자 수익을 기대할 수 있도록 구성했습니다.
+적금은 16%%인 800만원을 추천합니다. 월 저축 금액이 있으시므로, 꾸준히 목표 자산을 모아가는 데 적합합니다.
+마지막으로 투자는 36%%인 1800만원을 제안합니다. 안정형 투자 성향과 저축 목표에 맞춰, 너무 공격적이지 않으면서도 예금과 적금만으로는 부족할 수 있는 수익을 보완하도록 했습니다.
+종합적으로, 안정적인 성향과 저축 목표에 맞추어 현금·예금·적금 비중을 높여 안정성을 확보하고, 투자를 통해 추가 수익을 기대할 수 있도록 구성했습니다.
+요청:  "예시처럼 자산 분배 비율의 이유 설명. 개인 정보(소득/저축/목표/성향/비상금 등)와 추천 비율 간의 **관계**에 근거해 설명. 인사 금지. 사용자의 이름/자기소개 금지. **비율 전체에 대한 평가만** 작성. 데이터 재나열 금지."
+""".formatted(summary);
+    }
+
+
     // ----- Gemini 호출부 -----
     private String generateReasonTextWithGemini(RecommendationResponseDTO.RecommendApiResult rec) {
         String summary = buildSummary(rec);         // 예: 샘플 요약 문자열
@@ -428,7 +511,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
                             .flatMap(msg -> Mono.error(new IllegalStateException(
                                     "[Gemini] HTTP " + r.statusCode().value() + " - " + msg))))
                     .bodyToMono(GeminiResponse.class)
-                    .timeout(Duration.ofSeconds(12))
+                    .timeout(Duration.ofSeconds(120000))
                     .block();
 
             if (resp == null || resp.getCandidates() == null || resp.getCandidates().isEmpty()) {
@@ -475,7 +558,6 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
         return sb.toString();
     }
 
-    // ----- 프롬프트 생성: (PM님이 준 파이썬 예시를 Java 문자열로) -----
     private String buildPrompt(String summary) {
         return """
 역할: 당신은 초보 투자자에게 포트폴리오 지표를 쉽고 차분하게 설명하는 해설가다.
@@ -492,7 +574,7 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
 %s
 
 예시:  "이 포트폴리오는 고수익을 추구하면서도 위험을 관리할 수 있도록 구성되었습니다. 특히, 기술주 중심의 미국 시장과 배당 성장형 국내 시장을 혼합하여 위험을 분산하고, 수익률을 끌어올리는 전략을 사용했습니다."
-요청:  "예시처럼 해당 데이터 포트폴리오의 성향 및 위험도 분석 및 평가. 제공한 데이터를 다시 나열하지 금지. 자기소개 및 인사말 금지. 평가에 대한 결론만 작성. 오직 포트폴리오에 대한 평가만 작성"
+요청:  "예시처럼 해당 데이터 포트폴리오의 성향 및 위험도 분석 및 평가. 제공한 데이터를 다시 나열하지 금지. 자기소개 및 인사말 금지. 평가에 대한 결론만 작성. 오직 포트폴리오에 대한 평가만 작성. 종목에 대한 간단한 설명(Ticker 제외)"
 """.formatted(summary);
     }
 
@@ -506,84 +588,75 @@ public class RecommendationCommandServiceImpl implements RecommendationCommandSe
             case UNDER_10_YEARS, OVER_10_YEARS -> Horizon.LONG;
         };
     }
-    private static boolean isConservative(Propensity p) {
-        return p == Propensity.STABLE || p == Propensity.SAFETY;
-    }
-    private static boolean isAggressive(Propensity p) {
-        return p == Propensity.AGGRESSIVE || p == Propensity.AGGRESSIVE_INVESTMENT;
-    }
-    private static boolean isBalanced(Propensity p) {
-        return p == Propensity.ACTIVE;
+    private String formatMoney(BigDecimal v) {
+        java.text.NumberFormat nf = java.text.NumberFormat.getInstance();
+        nf.setGroupingUsed(true);
+        return nf.format(nvl(v)) + "원";
     }
 
-    private String buildRecommendationMessage(InvestmentDesign d) {
-        Propensity p = d.getPropensity();
-        boolean needEF = Boolean.TRUE.equals(d.getEmergencyFund());
-        Horizon h = horizonOf(d.getInvestmentPeriod());
+    private String toKoPropensity(Propensity p) {
+        if (p == null) return "미입력";
+        return switch (p) {
+            case STABLE -> "안정형";
+            case SAFETY -> "보수형";
+            case ACTIVE -> "위험중립형";
+            case AGGRESSIVE -> "적극형";
+            case AGGRESSIVE_INVESTMENT -> "공격투자형";
+        };
+    }
+    private String toKoPeriod(InvestmentPeriod p) {
+        if (p == null) return "미입력";
+        return switch (p) {
+            case UNDER_6_MONTHS -> "6개월 이내";
+            case UNDER_1_YEAR   -> "1년 이내";
+            case UNDER_2_YEARS  -> "2년 이내";
+            case UNDER_3_YEARS  -> "3년 이내";
+            case UNDER_5_YEARS  -> "5년 이내";
+            case UNDER_10_YEARS -> "10년 이내";
+            case OVER_10_YEARS  -> "10년 이상";
+        };
+    }
+    private String toKoPurpose(InvestmentPurpose p) {
+        if (p == null) return "미입력";
+        return switch (p) {
+            case SAVINGS -> "저축";
+            case TRAVEL -> "여행";
+            case SELF_DEVELOPMENT -> "자기계발";
+            case CAR_PURCHASE -> "차량 구입";
+            case MARRIAGE -> "결혼";
+            case HOME_OWNERSHIP -> "주택 구입";
+            default -> "기타";
+        };
+    }
+    private String toKoIncomeRange(IncomeRange r) {
+        if (r == null) return "미입력";
+        return switch (r) {
+            case BELOW_100 -> "100만원 미만";
+            case BETWEEN_100_200 -> "100~200만원";
+            case BETWEEN_200_300 -> "200~300만원";
+            case BETWEEN_300_500 -> "300~500만원";
+            case ABOVE_500 -> "500만원 이상";
+        };
+    }
+    private String toKoSavingRange(SavingRange r) {
+        if (r == null) return "미입력";
 
-        // 1) 안정적 + 비상금 필요 + 단기  (피그마 예시 문구)
-        if (isConservative(p) && needEF && h == Horizon.SHORT) {
-            return "안정적인 운용을 선호하시기 때문에 예금과 비상금 중심으로 추천드렸습니다. "
-                    + "급한 상황에서도 자산을 쉽게 사용할 수 있도록 유동성을 확보했어요. "
-                    + "목표 시점이 가까워 위험 자산 비중을 졸이고, 원금 보전에 유리한 구조로 설정했습니다.";
-        }
+        return switch (r) {
 
-        // 2) 안정적 + 비상금 필요 + 장기
-        if (isConservative(p) && needEF && h == Horizon.LONG) {
-            return "장기적인 안목으로 안정성을 추구하시는 성향에 맞춰, 비상금은 별도로 안전하게 확보하는 것을 추천합니다. "
-                    + "나머지 자금은 국채나 우량 채권 중심으로 꾸준히 운용하며, 정기적인 리밸런싱으로 변동성을 관리해 장기적인 자산 증식을 목표로 합니다.";
-        }
-
-        // 3) 공격적 + 비상금 필요 + 장기
-        if (isAggressive(p) && needEF && h == Horizon.LONG) {
-            return "높은 수익을 추구하시는 성향과 장기 목표를 고려하여 투자 자산 비중을 높게 설정했습니다. "
-                    + "다만, 최소한의 안전장치로 3~6개월치 비상금을 확보해 유동성 위험을 줄이는 것이 중요합니다. "
-                    + "이후 장기적인 분산투자와 리밸런싱으로 시장 하락 시 손실 위험을 관리하며 복리 효과를 극대화하는 전략을 추천합니다.";
-        }
-
-        // 4) 공격적 + 비상금 필요 + 단기
-        if (isAggressive(p) && needEF && h == Horizon.SHORT) {
-            return "공격적인 운용을 선호하시지만 목표 시점이 가까워 원금 보전을 우선했습니다. "
-                    + "갑작스러운 시장 하락에도 원금을 보호할 수 있도록 예금과 단기 채권 위주로 운용하도록 설정하였습니다.";
-        }
-
-        // 5) 위험중립 + 비상금 필요 + 단기
-        if (isBalanced(p) && needEF && h == Horizon.SHORT) {
-            return "단기 목표 달성을 위해 안정성을 높이는 방향으로 추천했습니다. "
-                    + "비상금을 통해 유동성을 확보하고, 자산의 대부분은 예금 및 단기 채권에 보관합니다. "
-                    + "소량의 우량 주식이나 배당주를 편입하여 안정적인 추가 수익을 추구하는 전략을 고려해볼 수 있습니다.";
-        }
-
-        // 6) 위험중립 + 비상금 필요 + 장기
-        if (isBalanced(p) && needEF && h == Horizon.LONG) {
-            return "위험중립 성향과 장기 목표의 균형을 맞추기 위해 '자산배분' 전략을 추천합니다. "
-                    + "주식과 채권의 비중을 균형 있게 배분하여 안정적인 성장을 추구합니다. "
-                    + "비상금은 별도로 유지하고, 꾸준한 분할 투자와 정기적인 리밸런싱으로 장기적인 수익성과 안정성을 함께 관리하는 것이 중요합니다.";
-        }
-
-        // 7) 안정적 + 비상금 없음 + 단기
-        if (isConservative(p) && !needEF && h == Horizon.SHORT) {
-            return "안정성을 선호하시지만 비상금이 없어 예상치 못한 지출에 취약할 수 있습니다. "
-                    + "투자에 앞서, 최소 3개월치 생활비를 언제든 사용할 수 있는 예금이나 파킹통장으로 먼저 마련하는 것을 강력히 권고합니다. "
-                    + "이후 단기 목표에 맞춰 안전자산 위주로 운용하는 것이 바람직합니다.";
-        }
-
-        // 8) 안정적 + 비상금 없음 + 장기
-        if (isConservative(p) && !needEF && h == Horizon.LONG) {
-            return "장기 투자 전에 비상금을 먼저 마련해 예기치 못한 지출에 대비하세요. "
-                    + "먼저 3~6개월치 생활비를 확보한 후, 장기적인 관점에서 채권과 예금 중심으로 투자를 시작하고 점진적으로 투자 자산을 늘려가는 전략을 추천합니다.";
-        }
-
-        // 9) 공격적 + 비상금 없음 + 장기
-        if (isAggressive(p) && !needEF && h == Horizon.LONG) {
-            return "공격적 성향이라도 비상금이 없으면 손절·중도해지 리스크가 커집니다. "
-                    + "먼저 3~6개월치 비상금을 안전하게 확보하세요. 그 후에 주식형 펀드나 ETF 중심으로 장기 분산 투자하여 기대수익률을 높이는 전략을 실행하는 것이 안전합니다.";
-        }
-
-        // 10) 그 외(기본 가이드)
-        return "목표 시점과 유동성 필요도를 고려해 비상금을 우선 확보하고, "
-                + "남는 자금은 성향에 맞춰 안전자산과 위험자산을 배분했습니다. "
-                + "분할투자와 정기 리밸런싱으로 변동성을 관리하는 전략을 권장합니다.";
+            case BELOW_10, BETWEEN_10_50 -> "50만원 미만";
+            case BETWEEN_50_100 -> "50~100만원";
+            case BETWEEN_100_200 -> "100~200만원";
+            case ABOVE_200 -> "200만원 이상";
+        };
+    }
+    private String toKoProfitRange(ProfitRange r) {
+        if (r == null) return "미입력";
+        // 점수 로직 기준(대략): ≤10% / 10~15% / 15%+
+        return switch (r) {
+            case BELOW_500, BETWEEN_500_1000 -> "10% 이하";
+            case BETWEEN_1000_3000 -> "10~15%";
+            case BETWEEN_3000_5000, BETWEEN_5000_10000, ABOVE_10000 -> "15% 이상";
+        };
     }
 
     private static BigDecimal nvl(BigDecimal v) { return v == null ? BigDecimal.ZERO : v; }

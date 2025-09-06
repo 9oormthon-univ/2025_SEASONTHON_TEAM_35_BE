@@ -10,7 +10,6 @@ import com.growplan.domain.recommendation.dto.RecommendationRequestDTO;
 import com.growplan.domain.recommendation.dto.RecommendationResponseDTO;
 import com.growplan.domain.recommendation.entity.InvestmentDesign;
 import com.growplan.domain.recommendation.repository.InvestmentDesignRepository;
-import com.growplan.domain.recommendation.repository.RecommendationRepository;
 import com.growplan.global.common.enums.*;
 import com.growplan.global.error.code.status.ErrorStatus;
 import com.growplan.global.error.exception.handler.AssetException;
